@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 const MODULE_DIR = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_ROOT = MODULE_DIR;
 const DEFAULT_PORT = 8080;
+/** 默认只监听回环地址；需要局域网访问时必须显式 HOST / --host。 */
+export const DEFAULT_HOST = '127.0.0.1';
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -57,6 +59,7 @@ export function isPathInside(rootDir, targetPath) {
 
 /**
  * 把 URL 路径解析为根目录内的候选文件路径；非法输入返回 null。
+ * 以点开头的路径段（.git、.agent-teams、.env、.vscode 等）一律视为不存在，返回 404。
  * @param {string} rootDir 根目录绝对路径
  * @param {string} url 原始请求地址
  * @returns {{ ok: boolean, status?: number, filePath?: string }}
@@ -75,6 +78,9 @@ export function resolveRequestPath(rootDir, url) {
   const segments = decoded.split(/[\\/]+/);
   if (segments.some((segment) => segment === '..')) {
     return { ok: false, status: 403 };
+  }
+  if (segments.some((segment) => segment.length > 1 && segment.startsWith('.'))) {
+    return { ok: false, status: 404 };
   }
   const normalized = path.posix.normalize(decoded);
   const relative = normalized.replace(/^[\\/]+/, '');
@@ -123,6 +129,10 @@ function handleRequest(req, res, rootDir) {
 
   const resolved = resolveRequestPath(rootDir, req.url);
   if (!resolved.ok) {
+    if (resolved.status === 404) {
+      sendNotFound(res, method);
+      return;
+    }
     sendStatus(res, method, resolved.status, resolved.status === 403 ? '禁止访问该路径。' : '请求地址无效。');
     return;
   }
@@ -171,20 +181,58 @@ export function createServer(rootDir = DEFAULT_ROOT) {
   });
 }
 
+/** 从命令行参数解析 --host（支持 --host=127.0.0.1 与 --host 127.0.0.1）。 */
+function parseHostArg(argv = process.argv) {
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (typeof arg !== 'string') continue;
+    if (arg.startsWith('--host=')) {
+      const value = arg.slice('--host='.length).trim();
+      if (value !== '') return value;
+    } else if (arg === '--host') {
+      const value = argv[index + 1];
+      if (typeof value === 'string' && value.trim() !== '' && !value.startsWith('--')) return value.trim();
+    }
+  }
+  return undefined;
+}
+
+/**
+ * 解析监听地址：默认只监听回环，显式 options.host / --host / HOST 才放开。
+ * @returns {string} 监听地址
+ */
+export function resolveHost(options = {}, argv = process.argv, env = process.env) {
+  const explicit = typeof options.host === 'string' && options.host.trim() !== '' ? options.host.trim() : undefined;
+  if (explicit) return explicit;
+  const fromArgv = parseHostArg(argv);
+  if (fromArgv) return fromArgv;
+  const fromEnv = typeof env.HOST === 'string' ? env.HOST.trim() : '';
+  return fromEnv !== '' ? fromEnv : DEFAULT_HOST;
+}
+
+/** 解析端口：显式 0 表示由系统分配临时端口。 */
+export function resolvePort(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 && number <= 65535 ? number : DEFAULT_PORT;
+}
+
 /**
  * 启动服务器并打印访问地址。
- * @param {{ port?: number, rootDir?: string }} [options] 启动参数
+ * @param {{ port?: number, rootDir?: string, host?: string }} [options] 启动参数
  * @returns {import('node:http').Server} 已开始监听的服务器
  */
 export function startServer(options = {}) {
-  const port = Number(options.port ?? process.env.PORT) || DEFAULT_PORT;
+  const port = resolvePort(options.port ?? process.env.PORT);
   const rootDir = options.rootDir ?? DEFAULT_ROOT;
+  const host = resolveHost(options);
   const server = createServer(rootDir);
-  server.listen(port, () => {
+  server.listen(port, host, () => {
     const address = server.address();
     const actualPort = typeof address === 'object' && address ? address.port : port;
-    console.log(`原理图工作室 dev server 已启动: http://localhost:${actualPort}`);
+    const displayHost = host === '0.0.0.0' || host === '::' ? 'localhost' : host;
+    console.log(`原理图工作室 dev server 已启动: http://${displayHost}:${actualPort}`);
     console.log(`静态根目录: ${path.resolve(rootDir)}`);
+    if (host !== DEFAULT_HOST) console.log('警告: 已监听非回环地址，局域网内可访问。');
   });
   return server;
 }

@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createServer, contentTypeFor, resolveRequestPath } from '../server.mjs';
+import { DEFAULT_HOST, createServer, contentTypeFor, resolveHost, resolveRequestPath, startServer } from '../server.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -149,6 +149,58 @@ test('resolveRequestPath 对非法路径返回错误状态', () => {
   const ok = resolveRequestPath(ROOT, '/src/main.js?cache=1');
   assert.equal(ok.ok, true);
   assert.ok(ok.filePath.endsWith(path.join('src', 'main.js')));
+});
+
+test('拒绝点开头的敏感路径且保留正常资源访问', async () => {
+  for (const requestPath of ['/.git/config', '/.agent-teams/schematic-studio/team.json', '/.env', '/.gitignore', '/src/.hidden.js']) {
+    const resolved = resolveRequestPath(ROOT, requestPath);
+    assert.equal(resolved.ok, false, requestPath + ' 应被拒绝');
+    assert.equal(resolved.status, 404, requestPath + ' 应返回 404');
+  }
+
+  await withServer(async (server) => {
+    for (const requestPath of ['/.git/config', '/.agent-teams/schematic-studio/team.json', '/.env']) {
+      const res = await request(server, requestPath);
+      assert.equal(res.status, 404, requestPath + ' 不应可读');
+      assert.doesNotMatch(res.body, /\[core\]|appId|SECRET/);
+    }
+    const source = await request(server, '/src/main.js');
+    assert.equal(source.status, 200);
+    const example = await request(server, '/examples/demo-led.json');
+    assert.equal(example.status, 200);
+    const image = await request(server, '/docs/images/app-overview.png');
+    assert.equal(image.status, 200);
+    assert.equal(image.headers['content-type'], 'image/png');
+    const page = await request(server, '/index.html');
+    assert.equal(page.status, 200);
+  });
+});
+
+test('默认只监听回环地址，显式请求才放开', async () => {
+  assert.equal(DEFAULT_HOST, '127.0.0.1');
+  assert.equal(resolveHost({}), '127.0.0.1');
+  assert.equal(resolveHost({ host: '' }), '127.0.0.1');
+  assert.equal(resolveHost({ host: '0.0.0.0' }), '0.0.0.0');
+  assert.equal(resolveHost({}, ['node', 'server.mjs', '--host', '0.0.0.0'], {}), '0.0.0.0');
+  assert.equal(resolveHost({}, ['node', 'server.mjs', '--host=192.168.1.9'], {}), '192.168.1.9');
+  assert.equal(resolveHost({}, [], { HOST: '10.0.0.2' }), '10.0.0.2');
+  assert.equal(resolveHost({}, [], {}), DEFAULT_HOST);
+
+  const server = startServer({ port: 0, rootDir: ROOT });
+  await new Promise((resolve, reject) => {
+    server.once('listening', resolve);
+    server.once('error', reject);
+  });
+  try {
+    const address = server.address();
+    assert.equal(address.address, '127.0.0.1');
+    assert.ok(address.port > 0);
+  } finally {
+    await new Promise((resolve) => {
+      server.close(() => resolve());
+      if (typeof server.closeAllConnections === 'function') server.closeAllConnections();
+    });
+  }
 });
 
 test('HEAD 请求返回响应头但无响应体', async () => {
