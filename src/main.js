@@ -15,7 +15,6 @@ export async function bootstrap(root) {
   const target = root || document.getElementById('app');
   if (!target) throw new Error('找不到挂载节点 #app');
   const app = await startApp(target);
-  console.log('[schematic-studio] v' + APP_VERSION + ' 已启动');
   return { version: APP_VERSION, root: target, app };
 }
 
