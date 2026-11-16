@@ -68,6 +68,8 @@ export function buildNetlist(project, options = {}) {
       instanceId: component.instanceId,
       sheetId: component.sheetId,
       power: component.power,
+      refPrefix: component.refPrefix,
+      virtual: component.virtual,
       pins: component.pins.map((pin) => ({ ...pin })),
     })),
   };
@@ -75,6 +77,12 @@ export function buildNetlist(project, options = {}) {
 
 function sortedComponents(components) {
   return [...components].sort((left, right) => naturalCompare(left.designator, right.designator));
+}
+
+/** KiCad 对没有名称的引脚使用 "~"，保持与 KiCad 原生网表一致。 */
+function pinFunctionText(pin) {
+  const name = typeof pin.pinName === 'string' ? pin.pinName.trim() : '';
+  return name === '' ? '~' : name;
 }
 
 function sortedPins(pins) {
@@ -214,7 +222,7 @@ export function generateKiCad(project, options = {}) {
       lines.push(
         '      (node (ref "' + escapeSExpr(pin.designator) + '")' +
           ' (pin "' + escapeSExpr(pin.pinNumber) + '")' +
-          ' (pinfunction "' + escapeSExpr(pin.pinName) + '")' +
+          ' (pinfunction "' + escapeSExpr(pinFunctionText(pin)) + '")' +
           ' (pintype "' + escapeSExpr(pin.electricalType) + '"))',
       );
     }

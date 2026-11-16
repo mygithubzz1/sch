@@ -12,6 +12,7 @@ import {
   generateKiCad,
   generateProtel,
 } from '../../src/netlist/index.js';
+import { createProject, createSymbolInstance } from '../../src/model/project.js';
 import {
   dividerProject,
   ledProject,
@@ -145,6 +146,30 @@ test('KiCad 网表为 KiCad 6+ S-表达式，括号平衡、net code 连续', ()
 
   const codes = [...text.matchAll(/\(net \(code (\d+)\)/g)].map((match) => Number(match[1]));
   assert.deepEqual(codes, [1, 2, 3]);
+});
+
+test('KiCad 网表把空引脚名写成 "~"（与 KiCad 原生网表一致）', () => {
+  const project = createProject('空引脚名');
+  const sheet = project.sheets[0];
+  sheet.symbols.push(
+    createSymbolInstance({ symbolId: 'X', designator: 'X1', x: 0, y: 0, footprintId: 'SOT-23' }),
+    createSymbolInstance({ symbolId: 'X', designator: 'X2', x: 10.16, y: 0, footprintId: 'SOT-23' }),
+  );
+  project.library.symbols = [
+    {
+      id: 'X',
+      power: false,
+      pins: [
+        { number: '1', name: '', x: -5.08, y: 0, electricalType: 'passive' },
+        { number: '2', name: '', x: 5.08, y: 0, electricalType: 'passive' },
+      ],
+    },
+  ];
+
+  const text = generateKiCad(project);
+  assert.ok(text.includes('(pinfunction "~")'));
+  assert.equal(text.includes('(pinfunction "")'), false);
+  assert.equal(parenBalance(text).depth, 0);
 });
 
 test('KiCad 网表转义引号、反斜杠与工程名', () => {
