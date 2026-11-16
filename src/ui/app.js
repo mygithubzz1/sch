@@ -27,7 +27,7 @@ import { clear, el } from './dom.js';
 import { confirmDialog, hasOpenModal, openModal, promptDialog } from './dialogs/modal.js';
 import { openExportDialog } from './dialogs/export-dialog.js';
 import { openAboutDialog, openShortcutsDialog, openTipsDialog } from './dialogs/help-dialog.js';
-import { getExampleProject } from './example-projects.js';
+import { loadExampleProject } from './example-projects.js';
 import { bindHotkeys } from './hotkeys.js';
 import { buildLayout, createModeBar } from './layout.js';
 import { createLayersPanel } from './panels/layers-panel.js';
@@ -647,9 +647,12 @@ export async function startApp(rootEl, options = {}) {
   }
 
   async function openExample(exampleId) {
-    const example = getExampleProject(exampleId);
-    if (!example) {
-      showToast('找不到示例工程：' + exampleId, 'warn');
+    const example = await loadExampleProject(exampleId);
+    if (example.error || !example.data) {
+      showMessageDialog('无法打开示例工程', [
+        example.error || '示例工程数据为空。',
+        '请使用最新版 Chrome/Edge（支持 JSON 模块）打开本应用。',
+      ]);
       return;
     }
     if (mode === 'footprint') {

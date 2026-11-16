@@ -107,11 +107,13 @@ sch/
 ## 运行与测试
 
 ```bash
-node server.mjs     # 启动静态服务器，默认 http://localhost:8080
+node server.mjs     # 启动静态服务器，默认仅监听 127.0.0.1:8080
 npm test            # 等价 node --test，运行 test/ 下全部用例
+npm run smoke       # 启动随机端口服务器并冒烟请求全部静态资源
 ```
 
-- 运行环境：Node.js 22+（使用内置 `node:test` 与 JSON 模块导入属性）；浏览器需现代 Chrome / Edge（支持 import attributes，约 123+）。
+- 运行环境：Node.js 22+（使用内置 `node:test` 与 JSON 模块动态导入）；浏览器需现代 Chrome / Edge（支持 JSON 模块动态导入，约 123+）。旧版浏览器仍可启动编辑器，打开示例时会在对话框提示升级。
+- 默认只监听回环地址；需要在局域网访问时显式放开：`HOST=0.0.0.0 node server.mjs` 或 `node server.mjs --host 0.0.0.0`。以点开头的路径段（`.git`、`.agent-teams`、`.env` 等）一律返回 404。
 - 全部用例当前 362 个，`npm test` 全绿；纯逻辑层（core/model/library/netlist/render 的纯函数/io 序列化）不依赖 DOM，可直接在 Node 中测试。
 - 服务器冒烟：`node server.mjs` 后访问 `/`、`/src/main.js`、`/examples/demo-led.json` 应返回 200 与正确 MIME。
 
@@ -128,6 +130,6 @@ npm test            # 等价 node --test，运行 test/ 下全部用例
 - ERC 只覆盖 6 类基础检查，不做电气规则全量校验（如驱动能力、扇出、时序）。
 - 封装编辑器支持焊盘与基本图形，不含 3D 预览、封装 DRC 或自动布线。
 - SVG 导出标题栏为简化排版；PNG 依赖 Canvas，导出分辨率为固定 2 倍。
-- 示例数据通过原生 JSON 模块静态导入，浏览器需支持 import attributes；旧版浏览器无法加载入口模块。
+- 示例数据通过动态 `import()` 按需加载 JSON 模块；不支持 JSON 模块的旧浏览器不会白屏，仅「打开示例」时提示升级。
 - 工程草稿只保存一份（localStorage key `schematic-studio:draft`），不支持云端同步或多工程库。
 - 未实现网表反向导入与 PCB 布局。
