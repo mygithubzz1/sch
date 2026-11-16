@@ -1,9 +1,12 @@
 // 应用装配层：把 store、库、渲染器、编辑器、面板、对话框与快捷键组装成可运行原理图工具。
 import { uid } from '../core/id.js';
-import { createFootprintEditor } from '../editor/footprint-editor.js';
-import { createFootprintStore, NEW_FOOTPRINT_ID } from '../editor/footprint-store.js';
-import { boundsOfIds } from '../editor/hit-test.js';
-import { createSchematicEditor } from '../editor/schematic-editor.js';
+import {
+  NEW_FOOTPRINT_ID,
+  boundsOfIds,
+  createFootprintEditor,
+  createFootprintStore,
+  createSchematicEditor,
+} from '../editor/index.js';
 import { createDefaultLibraries } from '../library/index.js';
 import {
   deserializeProject,
