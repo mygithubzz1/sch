@@ -81,7 +81,7 @@ core          ID、几何、事件总线、命令栈、schema
 sch/
 ├── index.html              # 应用外壳
 ├── server.mjs              # 零依赖静态服务器（导出 createServer 供测试）
-├── package.json            # 无依赖，scripts: start / test / smoke
+├── package.json            # 无依赖，scripts: start / test / smoke / verify:browser
 ├── .gitattributes          # 统一 LF 换行
 ├── src/
 │   ├── main.js             # bootstrap(root) 启动入口
@@ -101,25 +101,29 @@ sch/
 │   ├── CONTRACTS.md        # 接口契约（唯一权威）
 │   ├── USAGE.md            # 使用教程（含截图与 FAQ）
 │   ├── REVIEW.md           # T11 代码评审报告（发现 / 修复 / 指标）
+│   ├── FINAL_CHECKLIST.md  # T12 最终交付清单（功能矩阵与复验证据）
 │   ├── images/             # 界面截图
-│   └── review/             # 评审证据（修复前后截图、CJK 复现页）
+│   └── review/             # 评审与验证证据（CJK 前后对比、浏览器主流程截图/装配页）
 ├── scripts/
-│   └── smoke.mjs           # npm run smoke：随机端口静态资源冒烟
+│   ├── smoke.mjs           # npm run smoke：随机端口静态资源冒烟
+│   └── browser-flow.mjs    # npm run verify:browser：headless Chrome 主流程验证
 └── test/                   # node:test 用例（镜像 src/ 的层目录）
 ```
 
 ## 运行与测试
 
 ```bash
-node server.mjs     # 启动静态服务器，默认仅监听 127.0.0.1:8080
-npm test            # 等价 node --test，运行 test/ 下全部用例
-npm run smoke       # 启动随机端口服务器并冒烟请求全部静态资源
+node server.mjs        # 启动静态服务器，默认仅监听 127.0.0.1:8080
+npm test               # 等价 node --test，运行 test/ 下全部用例
+npm run smoke          # 启动随机端口服务器并冒烟请求全部静态资源
+npm run verify:browser # headless Chrome 跑真实主流程（需本机 Chrome/Edge）
 ```
 
 - 运行环境：Node.js 22+（使用内置 `node:test` 与 JSON 模块动态导入）；浏览器需现代 Chrome / Edge（支持 JSON 模块动态导入，约 123+）。旧版浏览器仍可启动编辑器，打开示例时会在对话框提示升级。
 - 默认只监听回环地址；需要在局域网访问时显式放开：`HOST=0.0.0.0 node server.mjs` 或 `node server.mjs --host 0.0.0.0`。以点开头的路径段（`.git`、`.agent-teams`、`.env` 等）一律返回 404。
 - 全部用例当前 413 个，`npm test` 全绿；纯逻辑层（core/model/library/netlist/render 的纯函数/io 序列化）不依赖 DOM，可直接在 Node 中测试。
-- 服务器冒烟：`node server.mjs` 后访问 `/`、`/src/main.js`、`/examples/demo-led.json` 应返回 200 与正确 MIME。
+- 服务器冒烟：`npm run smoke` 通过 **91/91** 项资源检查（含首页、样式、全部 `src/` 模块与示例 JSON）。
+- 浏览器主流程：`npm run verify:browser` 通过 **12/12**（示例加载、网表、SVG/KiCad/CSV 导出、放置/连线/junction、改位号值封装、撤销、封装焊盘），控制台 0 错误；完整证据见 **[docs/FINAL_CHECKLIST.md](docs/FINAL_CHECKLIST.md)**。
 
 ## Git 规范
 
@@ -136,4 +140,7 @@ npm run smoke       # 启动随机端口服务器并冒烟请求全部静态资�
 - SVG 导出标题栏为简化排版；PNG 依赖 Canvas，导出分辨率为固定 2 倍。
 - 示例数据通过动态 `import()` 按需加载 JSON 模块；不支持 JSON 模块的旧浏览器不会白屏，仅「打开示例」时提示升级。
 - 工程草稿只保存一份（localStorage key `schematic-studio:draft`），不支持云端同步或多工程库。
+- `src/ui/panels/properties-panel.js`（891 行）与 `src/netlist/connectivity.js`（749 行）本轮保留：拆分需配套 UI/算法回归测试，风险高于收益；后续方案（`property-forms/`、`union-find.js` + `naming.js`）见 FINAL_CHECKLIST 第 8 节。
+- 浏览器端到端脚本 `npm run verify:browser` 依赖本机 Chrome/Edge（可用 `CHROME_PATH` 指定），不纳入 `npm test` 的默认步骤。
+- 默认 4 px/mm 视图下 1.27 mm 文本仅约 5 CSS px：渲染已不再重叠，但阅读小字需放大或改用 2.54 mm 字号。
 - 未实现网表反向导入与 PCB 布局。
