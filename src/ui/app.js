@@ -952,6 +952,10 @@ export async function startApp(rootEl, options = {}) {
   }
 
   function toggleGridSnap() {
+    if (mode === 'footprint') {
+      showToast('封装编辑固定使用 0.635 mm 栅格吸附', 'info');
+      return;
+    }
     snapEnabled = !snapEnabled;
     syncChrome();
     showToast(

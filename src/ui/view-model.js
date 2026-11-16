@@ -159,10 +159,11 @@ export function statusSegments(state = {}) {
     { key: 'zoom', label: '缩放', value: zoomPercent(state.scale) },
     { key: 'tool', label: '工具', value: tool },
     { key: 'nets', label: '网络', value: String(Number.isFinite(Number(state.netCount)) ? Number(state.netCount) : 0) },
-    { key: 'snap', label: '吸附', value: state.snap === false ? '关' : '开' },
   ];
   if (state.mode === 'footprint') {
     segments.push({ key: 'mode', label: '模式', value: '封装编辑' });
+  } else {
+    segments.push({ key: 'snap', label: '吸附', value: state.snap === false ? '关' : '开' });
   }
   return segments;
 }
