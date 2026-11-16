@@ -152,6 +152,7 @@ NETLIST demo-mcu ok=true nets=16 pins=26 components=8 warnings=10
 | --- | --- | --- | --- |
 | `src/ui/panels/properties-panel.js`（891 行） | 多实体属性表单集中，分支多 | 拆分需同步改造 UI 测试与焦点/绑定逻辑，交付窗口内风险高于收益 | 按实体拆 `property-forms/{symbol,wire,label,text,sheet,footprint}.js`，面板只做调度；配套快照测试后分步迁移 |
 | `src/netlist/connectivity.js`（749 行） | 并查集、命名、电源/标签规则集中 | 核心算法已被 39+ 用例覆盖，拆分收益主要体现在阅读体验 | 抽出 `netlist/union-find.js` 与 `netlist/naming.js`，保持 `buildConnectivity` 等公共 API 不变，再迁移测试 |
+| `src/editor/tools/*`、`src/editor/footprint-tools/*` 幽灵图形回退色（R3，low） | `#4ea1ff` 等 10 余处回退值 | 渲染层已完全主题化，回退值仅在主题缺键时生效，不影响当前界面 | 集中为 `editor/overlay-colors.js` 常量（无行为变化，可单测），随下次编辑器改动一并落地 |
 
 ## 9. 仓库卫生
 
