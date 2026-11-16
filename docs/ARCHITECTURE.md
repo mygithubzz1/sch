@@ -226,7 +226,7 @@ sch/
 ### ADR-2 单根 `src/` 布局
 
 - **背景**：T1 文档最初按仓库根级 `<层>/` 目录描述分层，而入口 `index.html` 加载的是 `./src/main.js`；后续任务统一按 `src/<层>/**` 交付，且集成阶段的导入图测试只扫描 `src/`。
-- **决策**：所有可运行模块放在 `src/<层>/` 下（`core/model/library/netlist/render/editor/io/ui`），入口是 `src/main.js`，测试放在仓库根 `test/<层>/`，文档中的路径统一带 `src/` 前缀。
+- **决策**：所有可运行模块放在 `src/<层>/` 下（`core`、`model`、`library`、`netlist`、`render`、`editor`、`io`、`ui` 八个层目录），入口是 `src/main.js`，测试放在仓库根 `test/<层>/`，文档中的路径统一带 `src/` 前缀。
 - **理由**：与 `index.html` 的入口路径一致；导入图测试能覆盖全部源码；根目录只保留外壳、配置与文档；层目录与入口同根，跨层相对引用（`../core/id.js`）简短且稳定。
 - **影响**：新增模块必须放在 `src/` 内；反向依赖与越层 import 会被 `test/core/purity.test.mjs` 等检查拦截。
 

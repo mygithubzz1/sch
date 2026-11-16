@@ -59,7 +59,7 @@ sch/
 
 - 纯原生 HTML / CSS / ES Modules；**零第三方依赖、零 CDN、零构建步骤**。
 - **单根布局**：可运行代码全部位于 `src/`，`core` / `model` / `library` / `netlist` / `render` / `editor` / `io` / `ui` 均为 `src/` 下的层目录；入口是 `src/main.js`，测试在 `test/<层>/`；跨层使用相对引用（如 `src/library/x.js` 中 `import { uid } from '../core/id.js'`）。
-- 分层单向依赖（层目录均位于 `src/` 下）：`core -> model/library -> netlist/render -> editor -> io -> ui`，禁止反向 import。
+- 分层单向依赖（层目录均位于 `src/` 下）：`src/core -> (src/model | src/library) -> (src/netlist | src/render) -> src/editor -> src/io -> src/ui`，禁止反向 import。
 - `src/core`、`src/model`、`src/library`、`src/netlist`、`src/render/view.js`、`src/io/svg-export.js` 等纯函数模块禁止依赖 DOM，以便 `node --test` 直接测试。
 - 代码风格：2 空格缩进、分号结尾、单引号、文件与目录 kebab-case、每个文件顶部一句职责注释。
 - 接口签名以 [docs/CONTRACTS.md](docs/CONTRACTS.md) 为唯一权威；设计意图与分层规则见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
