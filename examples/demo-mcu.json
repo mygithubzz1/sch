@@ -1,0 +1,409 @@
+{
+  "schemaVersion": 1,
+  "name": "MCU 最小系统",
+  "units": "mm",
+  "grid": 2.54,
+  "sheets": [
+    {
+      "id": "sheet-559363-5",
+      "name": "主控",
+      "symbols": [
+        {
+          "id": "sym-demo-mcu-pwr1",
+          "symbolId": "+5V",
+          "designator": "#PWR03",
+          "value": "+5V",
+          "x": 60.96,
+          "y": 91.44,
+          "rotation": 0,
+          "mirror": false,
+          "footprintId": null,
+          "fields": {}
+        },
+        {
+          "id": "sym-demo-mcu-u1",
+          "symbolId": "MCU_16",
+          "designator": "U1",
+          "value": "MCU-16",
+          "x": 101.6,
+          "y": 101.6,
+          "rotation": 0,
+          "mirror": false,
+          "footprintId": "QFP-32",
+          "fields": {}
+        },
+        {
+          "id": "sym-demo-mcu-c1",
+          "symbolId": "C",
+          "designator": "C1",
+          "value": "100nF",
+          "x": 66.04,
+          "y": 96.52,
+          "rotation": 0,
+          "mirror": false,
+          "footprintId": "C_0603",
+          "fields": {}
+        },
+        {
+          "id": "sym-demo-mcu-c2",
+          "symbolId": "C",
+          "designator": "C2",
+          "value": "100nF",
+          "x": 73.66,
+          "y": 96.52,
+          "rotation": 0,
+          "mirror": false,
+          "footprintId": "C_0603",
+          "fields": {}
+        },
+        {
+          "id": "sym-demo-mcu-y1",
+          "symbolId": "XTAL",
+          "designator": "Y1",
+          "value": "8MHz",
+          "x": 86.36,
+          "y": 116.84,
+          "rotation": 0,
+          "mirror": false,
+          "footprintId": "HC-49S",
+          "fields": {}
+        },
+        {
+          "id": "sym-demo-mcu-tp1",
+          "symbolId": "TP",
+          "designator": "TP1",
+          "value": "IO9",
+          "x": 119.38,
+          "y": 91.44,
+          "rotation": 0,
+          "mirror": false,
+          "footprintId": null,
+          "fields": {}
+        },
+        {
+          "id": "sym-demo-mcu-tp2",
+          "symbolId": "TP",
+          "designator": "TP2",
+          "value": "IO16",
+          "x": 119.38,
+          "y": 114.3,
+          "rotation": 0,
+          "mirror": false,
+          "footprintId": null,
+          "fields": {}
+        },
+        {
+          "id": "sym-demo-mcu-pwr2",
+          "symbolId": "GND",
+          "designator": "#PWR04",
+          "value": "GND",
+          "x": 88.9,
+          "y": 101.6,
+          "rotation": 0,
+          "mirror": false,
+          "footprintId": null,
+          "fields": {}
+        }
+      ],
+      "wires": [
+        {
+          "id": "wire-demo-mcu-1",
+          "points": [
+            {
+              "x": 60.96,
+              "y": 91.44
+            },
+            {
+              "x": 93.98,
+              "y": 91.44
+            }
+          ],
+          "width": 0.1524
+        },
+        {
+          "id": "wire-demo-mcu-2",
+          "points": [
+            {
+              "x": 66.04,
+              "y": 101.6
+            },
+            {
+              "x": 93.98,
+              "y": 101.6
+            }
+          ],
+          "width": 0.1524
+        },
+        {
+          "id": "wire-demo-mcu-3",
+          "points": [
+            {
+              "x": 93.98,
+              "y": 93.98
+            },
+            {
+              "x": 83.82,
+              "y": 93.98
+            }
+          ],
+          "width": 0.1524
+        },
+        {
+          "id": "wire-demo-mcu-4",
+          "points": [
+            {
+              "x": 93.98,
+              "y": 96.52
+            },
+            {
+              "x": 83.82,
+              "y": 96.52
+            }
+          ],
+          "width": 0.1524
+        },
+        {
+          "id": "wire-demo-mcu-5",
+          "points": [
+            {
+              "x": 81.28,
+              "y": 116.84
+            },
+            {
+              "x": 76.2,
+              "y": 116.84
+            }
+          ],
+          "width": 0.1524
+        },
+        {
+          "id": "wire-demo-mcu-6",
+          "points": [
+            {
+              "x": 91.44,
+              "y": 116.84
+            },
+            {
+              "x": 96.52,
+              "y": 116.84
+            }
+          ],
+          "width": 0.1524
+        },
+        {
+          "id": "wire-demo-mcu-7",
+          "points": [
+            {
+              "x": 109.22,
+              "y": 91.44
+            },
+            {
+              "x": 119.38,
+              "y": 91.44
+            }
+          ],
+          "width": 0.1524
+        },
+        {
+          "id": "wire-demo-mcu-8",
+          "points": [
+            {
+              "x": 109.22,
+              "y": 109.22
+            },
+            {
+              "x": 109.22,
+              "y": 114.3
+            }
+          ],
+          "width": 0.1524
+        },
+        {
+          "id": "wire-demo-mcu-9",
+          "points": [
+            {
+              "x": 109.22,
+              "y": 114.3
+            },
+            {
+              "x": 119.38,
+              "y": 114.3
+            }
+          ],
+          "width": 0.1524
+        }
+      ],
+      "junctions": [
+        {
+          "id": "jct-demo-mcu-1",
+          "x": 73.66,
+          "y": 91.44
+        },
+        {
+          "id": "jct-demo-mcu-2",
+          "x": 73.66,
+          "y": 101.6
+        },
+        {
+          "id": "jct-demo-mcu-3",
+          "x": 88.9,
+          "y": 101.6
+        }
+      ],
+      "labels": [
+        {
+          "id": "lbl-demo-mcu-1",
+          "x": 83.82,
+          "y": 93.98,
+          "rotation": 0,
+          "text": "XTAL_IN",
+          "kind": "global"
+        },
+        {
+          "id": "lbl-demo-mcu-2",
+          "x": 83.82,
+          "y": 96.52,
+          "rotation": 0,
+          "text": "XTAL_OUT",
+          "kind": "global"
+        },
+        {
+          "id": "lbl-demo-mcu-3",
+          "x": 76.2,
+          "y": 116.84,
+          "rotation": 0,
+          "text": "XTAL_IN",
+          "kind": "global"
+        },
+        {
+          "id": "lbl-demo-mcu-4",
+          "x": 96.52,
+          "y": 116.84,
+          "rotation": 0,
+          "text": "XTAL_OUT",
+          "kind": "global"
+        }
+      ],
+      "texts": [
+        {
+          "id": "txt-demo-mcu-1",
+          "x": 60.96,
+          "y": 78.74,
+          "rotation": 0,
+          "text": "去耦电容尽量靠近 MCU 电源脚放置",
+          "size": 2.54
+        }
+      ],
+      "title": {
+        "title": "MCU 最小系统",
+        "company": "",
+        "rev": "A",
+        "date": "2026-11-16",
+        "comments": "示例：去耦电容与晶振"
+      }
+    }
+  ],
+  "library": {
+    "symbols": [
+      {
+        "id": "TP",
+        "name": "测试点",
+        "refPrefix": "TP",
+        "description": "单脚测试点（示例工程自定义符号）",
+        "power": false,
+        "pins": [
+          {
+            "id": "TP-pin-1",
+            "name": "",
+            "number": "1",
+            "x": 0,
+            "y": 0,
+            "length": 0,
+            "orientation": "down",
+            "electricalType": "passive"
+          }
+        ],
+        "graphics": [
+          {
+            "type": "circle",
+            "cx": 0,
+            "cy": 0,
+            "r": 0.762,
+            "width": 0.254
+          },
+          {
+            "type": "line",
+            "points": [
+              {
+                "x": 0,
+                "y": 0
+              },
+              {
+                "x": 0,
+                "y": -1.524
+              }
+            ],
+            "width": 0.254
+          }
+        ]
+      }
+    ],
+    "footprints": [
+      {
+        "id": "HC-49S",
+        "name": "HC-49S 晶振",
+        "description": "2 脚直插晶振（示例工程自定义封装）",
+        "pads": [
+          {
+            "id": "HC-49S-pad-1",
+            "number": "1",
+            "x": -2.54,
+            "y": 0,
+            "w": 1.8,
+            "h": 1.8,
+            "shape": "rect",
+            "rotation": 0,
+            "layer": "tht",
+            "drill": 0.8
+          },
+          {
+            "id": "HC-49S-pad-2",
+            "number": "2",
+            "x": 2.54,
+            "y": 0,
+            "w": 1.8,
+            "h": 1.8,
+            "shape": "rect",
+            "rotation": 0,
+            "layer": "tht",
+            "drill": 0.8
+          }
+        ],
+        "graphics": [
+          {
+            "type": "rect",
+            "x": -3.81,
+            "y": -2.54,
+            "w": 7.62,
+            "h": 5.08,
+            "width": 0.254,
+            "layer": "silkscreen"
+          },
+          {
+            "type": "rect",
+            "x": -4.445,
+            "y": -3.175,
+            "w": 8.89,
+            "h": 6.35,
+            "width": 0.127,
+            "layer": "courtyard"
+          }
+        ]
+      }
+    ]
+  },
+  "meta": {
+    "created": "2026-11-16T00:00:00.000Z",
+    "modified": "2026-11-16T00:00:00.000Z"
+  }
+}

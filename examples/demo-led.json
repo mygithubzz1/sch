@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 1,
+  "name": "LED 指示灯",
+  "units": "mm",
+  "grid": 2.54,
+  "sheets": [
+    {
+      "id": "sheet-559363-1",
+      "name": "图纸 1",
+      "symbols": [
+        {
+          "id": "sym-demo-led-pwr1",
+          "symbolId": "VCC",
+          "designator": "#PWR01",
+          "value": "VCC",
+          "x": 60.96,
+          "y": 40.64,
+          "rotation": 0,
+          "mirror": false,
+          "footprintId": null,
+          "fields": {}
+        },
+        {
+          "id": "sym-demo-led-r1",
+          "symbolId": "R",
+          "designator": "R1",
+          "value": "220R",
+          "x": 60.96,
+          "y": 50.8,
+          "rotation": 0,
+          "mirror": false,
+          "footprintId": "R_0805",
+          "fields": {}
+        },
+        {
+          "id": "sym-demo-led-d1",
+          "symbolId": "LED",
+          "designator": "D1",
+          "value": "LED",
+          "x": 55.88,
+          "y": 60.96,
+          "rotation": 0,
+          "mirror": false,
+          "footprintId": "R_0805",
+          "fields": {}
+        },
+        {
+          "id": "sym-demo-led-pwr2",
+          "symbolId": "GND",
+          "designator": "#PWR02",
+          "value": "GND",
+          "x": 60.96,
+          "y": 71.12,
+          "rotation": 0,
+          "mirror": false,
+          "footprintId": null,
+          "fields": {}
+        }
+      ],
+      "wires": [
+        {
+          "id": "wire-demo-led-1",
+          "points": [
+            {
+              "x": 60.96,
+              "y": 40.64
+            },
+            {
+              "x": 60.96,
+              "y": 45.72
+            }
+          ],
+          "width": 0.1524
+        },
+        {
+          "id": "wire-demo-led-2",
+          "points": [
+            {
+              "x": 60.96,
+              "y": 55.88
+            },
+            {
+              "x": 50.8,
+              "y": 60.96
+            }
+          ],
+          "width": 0.1524
+        },
+        {
+          "id": "wire-demo-led-3",
+          "points": [
+            {
+              "x": 60.96,
+              "y": 60.96
+            },
+            {
+              "x": 60.96,
+              "y": 71.12
+            }
+          ],
+          "width": 0.1524
+        }
+      ],
+      "junctions": [],
+      "labels": [],
+      "texts": [],
+      "title": {
+        "title": "图纸 1",
+        "company": "",
+        "rev": "",
+        "date": "2026-11-16",
+        "comments": ""
+      }
+    }
+  ],
+  "library": {
+    "symbols": [],
+    "footprints": []
+  },
+  "meta": {
+    "created": "2026-11-16T00:00:00.000Z",
+    "modified": "2026-11-16T00:00:00.000Z"
+  }
+}
