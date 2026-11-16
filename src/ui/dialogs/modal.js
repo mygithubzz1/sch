@@ -145,7 +145,13 @@ export function openModal(config = {}) {
 
   const actions = Array.isArray(config.actions) ? config.actions : [];
   for (const action of actions) {
-    if (!action || typeof action !== 'object') continue;
+    if (!action) continue;
+    // 允许直接传入已构建的按钮节点（如导出对话框的「复制 / 下载文件」），原样挂到 footer。
+    if (action.nodeType === 1) {
+      footer.appendChild(action);
+      continue;
+    }
+    if (typeof action !== 'object') continue;
     const kind = action.kind === 'primary' ? 'primary' : action.kind === 'danger' ? 'danger' : 'ghost';
     const button = el('button', {
       class: 'btn btn-' + kind + (action.autofocus ? ' autofocus' : ''),
