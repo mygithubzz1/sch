@@ -38,24 +38,29 @@ sch/
 ├── index.html          # 应用外壳
 ├── server.mjs          # 零依赖静态服务器（导出 createServer 供测试）
 ├── package.json        # 无依赖，scripts: start / test
-├── src/main.js         # bootstrap(root) 启动入口
-├── core/               # ID、几何、事件总线、命令栈、schema
-├── model/              # 工程数据与纯函数、状态仓库
-├── library/            # 符号库与封装库（含内置数据）
-├── netlist/            # 连通性分析与网表导出
-├── render/             # 视图变换、画布渲染、主题、网格、符号绘制
-├── editor/             # 吸附、可撤销命令、编辑器与工具
-├── io/                 # 工程序列化、SVG / PNG 导出
-├── ui/                 # 面板、工具栏、对话框与样式
+├── .gitattributes      # 统一 LF 换行
+├── src/
+│   ├── main.js         # bootstrap(root) 启动入口
+│   ├── core/           # ID、几何、事件总线、命令栈、schema
+│   ├── model/          # 工程数据与纯函数、状态仓库
+│   ├── library/        # 符号库与封装库（含内置数据）
+│   ├── netlist/        # 连通性分析与网表导出
+│   ├── render/         # 视图变换、画布渲染、主题、网格、符号绘制
+│   ├── editor/         # 吸附、可撤销命令、编辑器与工具
+│   ├── io/             # 工程序列化、SVG / PNG 导出
+│   └── ui/             # 面板、工具栏、对话框与样式
 ├── docs/               # 架构说明与接口契约
-└── test/               # node:test 用例
+└── test/               # node:test 用例（镜像 src/ 的层目录）
 ```
+
+所有可运行代码都位于 `src/` 单根目录，仓库根只放外壳、配置、文档与测试。
 
 ## 开发约定
 
 - 纯原生 HTML / CSS / ES Modules；**零第三方依赖、零 CDN、零构建步骤**。
-- 分层单向依赖：`core -> model/library -> netlist/render -> editor -> io -> ui`，禁止反向 import。
-- `core`、`model`、`library`、`netlist`、`render/view.js`、`io/svg-export.js` 等纯函数模块禁止依赖 DOM，以便 `node --test` 直接测试。
+- **单根布局**：可运行代码全部位于 `src/`，`core` / `model` / `library` / `netlist` / `render` / `editor` / `io` / `ui` 均为 `src/` 下的层目录；入口是 `src/main.js`，测试在 `test/<层>/`；跨层使用相对引用（如 `src/library/x.js` 中 `import { uid } from '../core/id.js'`）。
+- 分层单向依赖（层目录均位于 `src/` 下）：`core -> model/library -> netlist/render -> editor -> io -> ui`，禁止反向 import。
+- `src/core`、`src/model`、`src/library`、`src/netlist`、`src/render/view.js`、`src/io/svg-export.js` 等纯函数模块禁止依赖 DOM，以便 `node --test` 直接测试。
 - 代码风格：2 空格缩进、分号结尾、单引号、文件与目录 kebab-case、每个文件顶部一句职责注释。
 - 接口签名以 [docs/CONTRACTS.md](docs/CONTRACTS.md) 为唯一权威；设计意图与分层规则见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 
