@@ -26,6 +26,7 @@ const UI_FILES = [
   'icons.js',
   'view-model.js',
   'project-setup.js',
+  'example-projects.js',
   'hotkeys.js',
   'toast.js',
   'welcome.js',
@@ -113,19 +114,79 @@ test('不引入外部字体、图标或 CDN 资源', () => {
   }
 });
 
-test('UI 层依赖方向合法：只引用下层模块', async () => {
+// examples/*.json 是「数据」而非「模块依赖」：只允许白名单模块以 JSON 数据形式按需导入。
+const DATA_IMPORT_ALLOWED_FILES = new Set(['example-projects.js']);
+const DATA_IMPORT_PATTERN = /^\.\.\/\.\.\/examples\/[a-z0-9-]+\.json$/;
+
+function importSpecifiers(text) {
+  const specifiers = new Set();
+  for (const pattern of [/from\s+['"]([^'"]+)['"]/g, /import\s*\(\s*['"]([^'"]+)['"]/g]) {
+    let match = pattern.exec(text);
+    while (match) {
+      specifiers.add(match[1]);
+      match = pattern.exec(text);
+    }
+  }
+  return [...specifiers];
+}
+
+test('UI 层依赖方向合法：只引用下层模块，示例 JSON 走数据导入白名单', async () => {
   const allowed = new Set(['core', 'model', 'library', 'render', 'netlist', 'editor', 'io', 'ui']);
   for (const file of UI_JS_FILES) {
     const text = read('src/ui/' + file);
-    const specifiers = [...text.matchAll(/from\s+['"]([^'"]+)['"]/g)].map((match) => match[1]);
-    for (const specifier of specifiers) {
-      assert.ok(specifier.startsWith('.'), file + ' 不应使用裸模块导入：' + specifier);
+    for (const specifier of importSpecifiers(text)) {
       const resolved = path.posix.normalize(path.posix.join('src/ui/' + path.posix.dirname(file), specifier));
+      if (DATA_IMPORT_PATTERN.test(specifier)) {
+        assert.equal(DATA_IMPORT_ALLOWED_FILES.has(file), true, file + ' 不在示例数据导入白名单，不能导入 ' + specifier);
+        assert.ok(resolved.startsWith('examples/'), file + ' 示例数据路径非法：' + specifier);
+        assert.ok(fs.existsSync(path.join(ROOT, resolved)), file + ' 引用的示例数据不存在：' + resolved);
+        continue;
+      }
+      assert.ok(specifier.startsWith('.'), file + ' 不应使用裸模块导入：' + specifier);
       assert.ok(resolved.startsWith('src/'), file + ' 引用越界：' + specifier);
       const layer = resolved.split('/')[1];
       assert.ok(allowed.has(layer), file + ' 引用了非法层：' + specifier + ' -> ' + resolved);
     }
+
+    // 任何 examples/ 字面量都必须是白名单模块中的 JSON 数据文件。
+    const examplesLiterals = [...text.matchAll(/['"]([^'"]*examples\/[^'"]+)['"]/g)].map((match) => match[1]);
+    for (const literal of examplesLiterals) {
+      assert.equal(DATA_IMPORT_PATTERN.test(literal), true, file + ' 出现未登记的 examples 导入：' + literal);
+      assert.equal(DATA_IMPORT_ALLOWED_FILES.has(file), true, file + ' 不允许导入示例数据：' + literal);
+    }
   }
+});
+
+test('示例数据走动态 JSON 导入，旧浏览器不会因静态 import attributes 白屏', () => {
+  const text = read('src/ui/example-projects.js');
+  assert.match(text, /import\s*\(\s*['"]\.\.\/\.\.\/examples\/demo-led\.json['"]/);
+  assert.match(text, /import\s*\(\s*['"]\.\.\/\.\.\/examples\/demo-mcu\.json['"]/);
+  assert.doesNotMatch(text, /^\s*import\s.+?from\s+['"][^'"]*examples\//m, '不得静态导入示例 JSON');
+  assert.match(text, /try\s*{/);
+  assert.match(text, /catch\s*\(/);
+  assert.match(text, /error/);
+});
+
+test('示例工程可动态加载，未知 id 返回结构化错误', async () => {
+  const module = await import(pathToFileURL(path.join(ROOT, 'src/ui/example-projects.js')).href);
+  assert.deepEqual(module.EXAMPLE_PROJECTS.map((example) => example.id), ['led', 'mcu']);
+  assert.deepEqual(module.exampleProjects().map((example) => example.id), ['led', 'mcu']);
+  assert.equal(module.getExampleMetadata('led').label, 'LED 指示灯');
+  assert.equal(module.getExampleMetadata('nope'), null);
+
+  const led = await module.loadExampleProject('led');
+  assert.equal(led.error, null);
+  assert.equal(led.label, 'LED 指示灯');
+  assert.equal(led.data.name, 'LED 指示灯');
+  assert.equal(led.data.sheets.length, 1);
+
+  const mcu = await module.loadExampleProject('mcu');
+  assert.equal(mcu.error, null);
+  assert.equal(mcu.data.name, 'MCU 最小系统');
+
+  const unknown = await module.loadExampleProject('nope');
+  assert.equal(unknown.data, null);
+  assert.match(unknown.error, /找不到示例工程/);
 });
 
 test('下层模块没有反向依赖 src/ui', () => {

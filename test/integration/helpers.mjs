@@ -249,7 +249,7 @@ export function extractImportSpecifiers(source) {
     }
     match = keywordPattern.exec(code);
   }
-  const dynamicPattern = /import\s*\(\s*(['"])([^'"]+)\1\s*\)/g;
+  const dynamicPattern = /import\s*\(\s*(['"])([^'"]+)\1\s*(?:,[^)]*)?\)/g;
   let dynamicMatch = dynamicPattern.exec(code);
   while (dynamicMatch) {
     specifiers.push(dynamicMatch[2]);
