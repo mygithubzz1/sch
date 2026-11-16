@@ -1,23 +1,30 @@
-// 应用入口：挂载占位骨架并触发启动流程（最终版由 UI 任务定稿）。
-export const APP_VERSION = '0.1.0';
+// 应用入口：把 #app 交给 UI 装配层启动，异常时给出可见提示。
+import { APP_VERSION, startApp } from './ui/app.js';
+
+export { APP_VERSION };
 
 /**
  * 启动应用。
  * @param {HTMLElement} [root] 挂载容器，默认为 #app
- * @returns {Promise<{ version: string, root: HTMLElement | null }>} 启动结果
+ * @returns {Promise<{ version: string, root: HTMLElement|null, app: object|null }>} 启动结果
  */
 export async function bootstrap(root) {
-  const target = root || (typeof document === 'undefined' ? null : document.getElementById('app'));
-  const message = `原理图工作室 v${APP_VERSION} · 脚手架就绪，等待 UI 模块加载`;
-
-  if (target) {
-    target.textContent = message;
+  if (typeof document === 'undefined') {
+    return { version: APP_VERSION, root: null, app: null };
   }
-  console.log(`[schematic-studio] ${message}`);
-
-  return { version: APP_VERSION, root: target || null };
+  const target = root || document.getElementById('app');
+  if (!target) throw new Error('找不到挂载节点 #app');
+  const app = await startApp(target);
+  console.log('[schematic-studio] v' + APP_VERSION + ' 已启动');
+  return { version: APP_VERSION, root: target, app };
 }
 
 if (typeof document !== 'undefined') {
-  bootstrap(document.getElementById('app'));
+  bootstrap().catch((error) => {
+    console.error('[schematic-studio] 启动失败', error);
+    const target = document.getElementById('app');
+    if (target) {
+      target.textContent = '应用启动失败：' + (error && error.message ? error.message : String(error));
+    }
+  });
 }
