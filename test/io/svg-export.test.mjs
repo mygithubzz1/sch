@@ -1,10 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createSymbolInstance } from '../../src/model/project.js';
 import { builtinSymbols } from '../../src/library/builtin-symbols.js';
 import { createTheme } from '../../src/render/theme.js';
 import { escapeXml, projectToSVG } from '../../src/io/svg-export.js';
+import { deserializeProject } from '../../src/io/project-io.js';
 import { createEmptyProject, createIoFixture } from './fixtures.mjs';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 test('projectToSVG 输出完整 SVG 头与 viewBox', () => {
   const { project, sheet } = createIoFixture();
@@ -96,18 +102,40 @@ test('缺失符号绘制占位框而不是抛错', () => {
   assert.ok(svg.includes('data-designator="U9"'));
 });
 
-test('options.symbols 可为空库工程提供符号定义', () => {
+test('未显式传入 symbols 时回退内置符号库，可用 useBuiltinSymbols:false 关闭', () => {
   const { project, sheet } = createEmptyProject('解析器测试');
   sheet.symbols.push(createSymbolInstance({
     id: 'sym-r7', symbolId: 'R', designator: 'R7', value: '4k7', x: 10, y: 10,
     rotation: 0, mirror: false, footprintId: null, fields: {},
   }));
+
   const withoutLibrary = projectToSVG(project, sheet);
-  assert.ok(withoutLibrary.includes('symbol-missing'));
+  assert.ok(withoutLibrary.includes('data-symbol-id="R"'));
+  assert.ok(withoutLibrary.includes('>R7</text>'));
+  assert.ok(!withoutLibrary.includes('symbol-missing'));
+
+  const strict = projectToSVG(project, sheet, { useBuiltinSymbols: false });
+  assert.ok(strict.includes('symbol-missing'));
+
+  const unknownSheet = { ...sheet, symbols: [{ ...sheet.symbols[0], symbolId: 'NO_SUCH_SYMBOL' }] };
+  assert.ok(projectToSVG(project, unknownSheet).includes('symbol-missing'));
+
   const withOptions = projectToSVG(project, sheet, { symbols: builtinSymbols() });
   assert.ok(withOptions.includes('data-symbol-id="R"'));
-  assert.ok(withOptions.includes('>R7</text>'));
   assert.ok(!withOptions.includes('symbol-missing'));
+});
+
+test('examples/demo-led.json 直接导出 SVG 不含占位框', () => {
+  const text = fs.readFileSync(path.join(ROOT, 'examples/demo-led.json'), 'utf8');
+  const { project, warnings } = deserializeProject(text);
+  assert.deepEqual(warnings, []);
+  assert.ok(project);
+  const svg = projectToSVG(project, project.sheets[0]);
+  assert.ok(!svg.includes('symbol-missing'));
+  assert.ok(svg.includes('data-symbol-id="R"'));
+  assert.ok(svg.includes('data-symbol-id="LED"'));
+  assert.ok(svg.includes('data-designator="R1"'));
+  assert.ok(svg.includes('220R'));
 });
 
 test('sheet 缺省时使用工程第一张图纸；空工程不抛错', () => {

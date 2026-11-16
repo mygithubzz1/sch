@@ -1,6 +1,7 @@
 // SVG 导出入口：解析工程/图纸、汇总各图层并组装完整 SVG（纯函数，不依赖 canvas）。
 import { contentBBox } from '../render/bounds.js';
 import { createTheme, themeColor } from '../render/theme.js';
+import { builtinSymbols } from '../library/builtin-symbols.js';
 import {
   escapeXml,
   formatNumber,
@@ -27,6 +28,8 @@ function createSymbolResolver(project, options) {
   const add = (def) => {
     if (def && typeof def.id === 'string' && def.id !== '') map.set(def.id, def);
   };
+  // 与网表解析顺序一致：内置符号兜底，project.library / options.symbols 覆盖同名定义。
+  if (options.useBuiltinSymbols !== false) builtinSymbols().forEach(add);
   const library = project && project.library ? project.library : null;
   if (library && Array.isArray(library.symbols)) library.symbols.forEach(add);
   if (Array.isArray(options.symbols)) options.symbols.forEach(add);
@@ -78,7 +81,9 @@ function resolveBounds(sheet, resolveSymbol, options) {
  * @param {object} project 工程
  * @param {object} sheet 图纸；缺省取第一张
  * @param {object} [options] { theme, padding, bounds, pageSize, background, titleBlock,
- *   showPinNames, showPinNumbers, showText, symbols, library, symbolResolver }
+ *   showPinNames, showPinNumbers, showText, symbols, library, symbolResolver, useBuiltinSymbols }
+ *   符号解析顺序：symbolResolver > project.library / options.symbols / options.library > 内置符号库；
+ *   传 useBuiltinSymbols:false 可关闭内置库兜底（用于严格校验工程自带库）。
  * @returns {string} SVG 文本
  */
 export function projectToSVG(project, sheet, options = {}) {
