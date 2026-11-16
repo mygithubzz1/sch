@@ -3,6 +3,7 @@ import { BaseCanvasRenderer } from './base-renderer.js';
 import { bboxOfPoints } from '../core/geometry.js';
 import { expandBounds } from './bounds.js';
 import { themeColor } from './theme.js';
+import { drawCanvasText } from './text.js';
 
 export const DEFAULT_FOOTPRINT_BOUNDS = Object.freeze({ x: -20, y: -15, w: 40, h: 30 });
 const DEFAULT_GRAPHIC_WIDTH = 0.15;
@@ -243,11 +244,16 @@ export class FootprintRenderer extends BaseCanvasRenderer {
       );
       ctx.stroke();
     } else if (type === 'text') {
-      const size = toNumber(graphic.size, 1.27);
-      ctx.font = size + 'px ' + themeColor(this.theme, 'fontFamily');
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(typeof graphic.text === 'string' ? graphic.text : '', toNumber(graphic.x, 0), toNumber(graphic.y, 0));
+      drawCanvasText(ctx, {
+        text: typeof graphic.text === 'string' ? graphic.text : '',
+        x: toNumber(graphic.x, 0),
+        y: toNumber(graphic.y, 0),
+        size: toNumber(graphic.size, 1.27),
+        align: 'center',
+        baseline: 'middle',
+        color,
+        fontFamily: themeColor(this.theme, 'fontFamily'),
+      });
     }
     ctx.restore();
   }
@@ -291,17 +297,21 @@ export class FootprintRenderer extends BaseCanvasRenderer {
   drawPadNumbers(ctx) {
     const pads = Array.isArray(this.footprint.pads) ? this.footprint.pads : [];
     const family = themeColor(this.theme, 'fontFamily');
-    ctx.save();
-    ctx.fillStyle = themeColor(this.theme, 'padText');
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    const color = themeColor(this.theme, 'padText');
     for (const pad of pads) {
       if (!pad || pad.number === undefined || pad.number === null || pad.number === '') continue;
       const size = Math.max(0.4, Math.min(1.2, Math.min(toNumber(pad.w, 1), toNumber(pad.h, 1)) * 0.45));
-      ctx.font = size + 'px ' + family;
-      ctx.fillText(String(pad.number), toNumber(pad.x, 0), toNumber(pad.y, 0));
+      drawCanvasText(ctx, {
+        text: String(pad.number),
+        x: toNumber(pad.x, 0),
+        y: toNumber(pad.y, 0),
+        size,
+        align: 'center',
+        baseline: 'middle',
+        color,
+        fontFamily: family,
+      });
     }
-    ctx.restore();
   }
 
   drawHighlights(ctx) {

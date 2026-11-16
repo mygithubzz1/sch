@@ -5,6 +5,7 @@ import { contentBBox } from './bounds.js';
 import { themeColor } from './theme.js';
 import { drawTitleBar } from './title-bar.js';
 import { drawSymbol, measureTextWidth, symbolBBox, symbolGraphicsBBox, textPrimitiveBounds } from './symbols.js';
+import { drawCanvasText, measureCanvasText } from './text.js';
 
 const JUNCTION_RADIUS = 0.5;
 const LABEL_SIZE = 1.27;
@@ -133,22 +134,22 @@ export class SchematicRenderer extends BaseCanvasRenderer {
     const family = themeColor(this.theme, 'fontFamily');
     const centerX = box.x + box.w / 2;
     ctx.save();
-    ctx.font = size + 'px ' + family;
-    ctx.textAlign = 'center';
 
     if (def && def.power) {
       const label = instance.value || instance.designator || '';
       if (label) {
         const orientation = Array.isArray(def.pins) && def.pins[0] ? def.pins[0].orientation : 'down';
-        if (orientation === 'up') {
-          ctx.textBaseline = 'bottom';
-          ctx.fillStyle = themeColor(this.theme, 'reference');
-          ctx.fillText(label, centerX, box.y - SYMBOL_LABEL_GAP);
-        } else {
-          ctx.textBaseline = 'top';
-          ctx.fillStyle = themeColor(this.theme, 'value');
-          ctx.fillText(label, centerX, box.y + box.h + SYMBOL_LABEL_GAP);
-        }
+        const above = orientation === 'up';
+        drawCanvasText(ctx, {
+          text: label,
+          x: centerX,
+          y: above ? box.y - SYMBOL_LABEL_GAP : box.y + box.h + SYMBOL_LABEL_GAP,
+          size,
+          align: 'center',
+          baseline: above ? 'bottom' : 'top',
+          color: themeColor(this.theme, above ? 'reference' : 'value'),
+          fontFamily: family,
+        });
       }
       ctx.restore();
       return;
@@ -160,26 +161,53 @@ export class SchematicRenderer extends BaseCanvasRenderer {
     if (def && hasVerticalPins && !hasHorizontalPins) {
       const labelX = box.x + box.w + 0.5;
       const centerY = box.y + box.h / 2;
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = themeColor(this.theme, 'reference');
-      ctx.fillText(instance.designator || '?', labelX, centerY - 0.55);
+      drawCanvasText(ctx, {
+        text: instance.designator || '?',
+        x: labelX,
+        y: centerY - 0.55,
+        size,
+        align: 'left',
+        baseline: 'middle',
+        color: themeColor(this.theme, 'reference'),
+        fontFamily: family,
+      });
       if (instance.value) {
-        ctx.fillStyle = themeColor(this.theme, 'value');
-        ctx.fillText(instance.value, labelX, centerY + 0.75);
+        drawCanvasText(ctx, {
+          text: instance.value,
+          x: labelX,
+          y: centerY + 0.75,
+          size,
+          align: 'left',
+          baseline: 'middle',
+          color: themeColor(this.theme, 'value'),
+          fontFamily: family,
+        });
       }
       ctx.restore();
       return;
     }
 
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
-    ctx.fillStyle = themeColor(this.theme, 'reference');
-    ctx.fillText(instance.designator || '?', centerX, box.y - SYMBOL_LABEL_GAP);
+    drawCanvasText(ctx, {
+      text: instance.designator || '?',
+      x: centerX,
+      y: box.y - SYMBOL_LABEL_GAP,
+      size,
+      align: 'center',
+      baseline: 'bottom',
+      color: themeColor(this.theme, 'reference'),
+      fontFamily: family,
+    });
     if (instance.value) {
-      ctx.textBaseline = 'top';
-      ctx.fillStyle = themeColor(this.theme, 'value');
-      ctx.fillText(instance.value, centerX, box.y + box.h + SYMBOL_LABEL_GAP);
+      drawCanvasText(ctx, {
+        text: instance.value,
+        x: centerX,
+        y: box.y + box.h + SYMBOL_LABEL_GAP,
+        size,
+        align: 'center',
+        baseline: 'top',
+        color: themeColor(this.theme, 'value'),
+        fontFamily: family,
+      });
     }
     ctx.restore();
   }
@@ -231,13 +259,11 @@ export class SchematicRenderer extends BaseCanvasRenderer {
       ctx.translate(toNumber(label.x, 0), toNumber(label.y, 0));
       const rotation = toNumber(label.rotation, 0);
       if (rotation) ctx.rotate((normalizeDeg(rotation) * Math.PI) / 180);
-      ctx.font = size + 'px ' + family;
-      ctx.textBaseline = 'middle';
-      ctx.textAlign = 'left';
       ctx.strokeStyle = color;
       ctx.fillStyle = color;
       if (global) {
-        const textWidth = measureTextWidth(text, size);
+        const measured = measureCanvasText(ctx, text, size, family);
+        const textWidth = measured === null ? measureTextWidth(text, size) : measured;
         const padX = 0.5;
         const padY = 0.32;
         const boxX = 0.5;
@@ -252,12 +278,12 @@ export class SchematicRenderer extends BaseCanvasRenderer {
         ctx.closePath();
         ctx.fill();
         ctx.strokeRect(boxX, boxY, boxW, boxH);
-        ctx.fillText(text, boxX + padX, 0);
+        drawCanvasText(ctx, { text, x: boxX + padX, y: 0, size, align: 'left', baseline: 'middle', color, fontFamily: family });
       } else {
         ctx.beginPath();
         ctx.arc(0, 0, 0.22, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillText(text, LABEL_DISTANCE, 0);
+        drawCanvasText(ctx, { text, x: LABEL_DISTANCE, y: 0, size, align: 'left', baseline: 'middle', color, fontFamily: family });
       }
       ctx.restore();
     }
@@ -266,22 +292,22 @@ export class SchematicRenderer extends BaseCanvasRenderer {
   drawTexts(ctx, sheet) {
     const texts = Array.isArray(sheet.texts) ? sheet.texts : [];
     const family = themeColor(this.theme, 'fontFamily');
-    ctx.save();
-    ctx.fillStyle = themeColor(this.theme, 'text');
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
+    const color = themeColor(this.theme, 'text');
     for (const text of texts) {
       if (!text) continue;
       const size = Math.max(0.2, toNumber(text.size, TEXT_DEFAULT_SIZE));
-      ctx.save();
-      ctx.translate(toNumber(text.x, 0), toNumber(text.y, 0));
-      const rotation = toNumber(text.rotation, 0);
-      if (rotation) ctx.rotate((normalizeDeg(rotation) * Math.PI) / 180);
-      ctx.font = size + 'px ' + family;
-      ctx.fillText(typeof text.text === 'string' ? text.text : String(text.text === undefined ? '' : text.text), 0, 0);
-      ctx.restore();
+      drawCanvasText(ctx, {
+        text: typeof text.text === 'string' ? text.text : String(text.text === undefined ? '' : text.text),
+        x: toNumber(text.x, 0),
+        y: toNumber(text.y, 0),
+        size,
+        rotation: toNumber(text.rotation, 0),
+        align: 'left',
+        baseline: 'middle',
+        color,
+        fontFamily: family,
+      });
     }
-    ctx.restore();
   }
 
   highlightColor(id) {

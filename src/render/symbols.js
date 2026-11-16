@@ -1,6 +1,7 @@
 // 符号绘制：把 SymbolDef 的图形与引脚转换为世界坐标图元，Canvas 与 SVG 导出共用同一份几何。
 import { bboxOfPoints, normalizeDeg, transformPoint } from '../core/geometry.js';
 import { DEFAULT_THEME, themeColor } from './theme.js';
+import { drawCanvasText } from './text.js';
 
 export const DEFAULT_GRAPHIC_WIDTH = 0.25;
 export const DEFAULT_PIN_WIDTH = 0.15;
@@ -331,21 +332,22 @@ function tracePath(ctx, primitive) {
 function drawPrimitive(ctx, primitive, theme, options) {
   if (primitive.kind === 'text') {
     if (!primitive.text) return;
-    const family = themeColor(theme, 'fontFamily');
-    ctx.save();
-    ctx.translate(primitive.x, primitive.y);
-    if (primitive.rotation) ctx.rotate((primitive.rotation * Math.PI) / 180);
-    ctx.font = primitive.size + 'px ' + family;
-    ctx.textAlign = primitive.align || 'left';
-    ctx.textBaseline = primitive.baseline || 'alphabetic';
     const color = primitive.role === 'pinName' || primitive.role === 'pinNumber'
       ? themeColor(theme, 'pinText')
       : primitive.role === 'graphicText'
         ? themeColor(theme, 'symbolText')
         : themeColor(theme, 'text');
-    ctx.fillStyle = color;
-    ctx.fillText(primitive.text, 0, 0);
-    ctx.restore();
+    drawCanvasText(ctx, {
+      text: primitive.text,
+      x: primitive.x,
+      y: primitive.y,
+      size: primitive.size,
+      rotation: primitive.rotation,
+      align: primitive.align || 'left',
+      baseline: primitive.baseline || 'alphabetic',
+      color,
+      fontFamily: themeColor(theme, 'fontFamily'),
+    });
     return;
   }
 
