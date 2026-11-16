@@ -1,0 +1,3 @@
+# 统一换行为 LF，消除 Windows 下的 CRLF 噪声
+* text=auto eol=lf
+*.json text eol=lf
