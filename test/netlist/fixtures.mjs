@@ -70,9 +70,35 @@ const FIVE_VOLT = {
   graphics: [],
 };
 
+const TEST_POINT = {
+  id: 'TP',
+  name: 'TP',
+  refPrefix: 'TP',
+  description: '测试点（无封装）',
+  power: false,
+  pins: [
+    { id: 'TP.1', name: 'TP', number: '1', x: 0, y: 0, length: 0, orientation: 'up', electricalType: 'passive' },
+  ],
+  graphics: [],
+};
+
+const SOCKET = {
+  id: 'SOCKET',
+  name: 'SOCKET',
+  refPrefix: 'X',
+  description: 'IC 插座（虚拟器件）',
+  power: false,
+  virtual: true,
+  pins: [
+    { id: 'SOCKET.1', name: '~', number: '1', x: -5.08, y: 0, length: 2.54, orientation: 'right', electricalType: 'passive' },
+    { id: 'SOCKET.2', name: '~', number: '2', x: 5.08, y: 0, length: 2.54, orientation: 'left', electricalType: 'passive' },
+  ],
+  graphics: [],
+};
+
 /** 内置测试符号定义（每次返回新副本，避免用例间共享可变对象）。 */
 export function symbolDefs() {
-  return [RESISTOR, LED, GND, VCC, FIVE_VOLT].map((def) => JSON.parse(JSON.stringify(def)));
+  return [RESISTOR, LED, GND, VCC, FIVE_VOLT, TEST_POINT, SOCKET].map((def) => JSON.parse(JSON.stringify(def)));
 }
 
 function attachSymbols(project) {
@@ -190,6 +216,25 @@ export function ercProject() {
     createWire([{ x: 65.08, y: 20 }, { x: 70, y: 20 }]),
     createWire([{ x: 80, y: 40 }, { x: 90, y: 40 }]),
   );
+  return attachSymbols(project);
+}
+
+/**
+ * 虚拟器件夹具：电源符号孤立/只接导线、测试点与 IC 插座（无封装），
+ * 另有普通电阻缺封装；用于验证 ERC 的电源/虚拟器件告警豁免。
+ */
+export function virtualProject() {
+  const project = createProject('虚拟器件');
+  const sheet = project.sheets[0];
+  sheet.symbols.push(
+    createSymbolInstance({ symbolId: 'GND', designator: '#PWR01', value: 'GND', x: 0, y: 0 }),
+    createSymbolInstance({ symbolId: 'TP', designator: 'TP1', value: '测试点', x: 20, y: 0 }),
+    createSymbolInstance({ symbolId: 'SOCKET', designator: 'X1', value: 'DIP-8 插座', x: 40, y: 0 }),
+    createSymbolInstance({ symbolId: 'R', designator: 'R1', value: '1k', x: 60, y: 0 }),
+    createSymbolInstance({ symbolId: 'GND', designator: '#PWR02', value: 'GND', x: 80, y: 20 }),
+  );
+  // #PWR02 只接一段悬空导线：其网络只有 1 个电源引脚，不应报 SINGLE_PIN_NET。
+  sheet.wires.push(createWire([{ x: 80, y: 20 }, { x: 90, y: 20 }]));
   return attachSymbols(project);
 }
 

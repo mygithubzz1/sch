@@ -407,6 +407,8 @@ export function analyzeSheet(project, sheet, options = {}) {
       x: toFinite(instance.x),
       y: toFinite(instance.y),
       power: Boolean(def && def.power === true),
+      refPrefix: def && typeof def.refPrefix === 'string' ? def.refPrefix : '',
+      virtual: Boolean(def && (def.virtual === true || def.virtualFields === true)),
       resolved: Boolean(def && Array.isArray(def.pins)),
       pins: [],
     };

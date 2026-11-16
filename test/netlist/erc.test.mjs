@@ -12,6 +12,7 @@ import {
   powerNameProject,
   emptyProject,
   junctionProject,
+  virtualProject,
 } from './fixtures.mjs';
 
 function byCode(warnings, code) {
@@ -131,6 +132,21 @@ test('电源符号不参与缺封装检查；重复位号告警覆盖跨图纸',
   );
   assert.equal(byCode(hierarchical.warnings, 'SINGLE_PIN_NET').length, 2);
   assert.equal(hierarchical.warnings.length, 4);
+});
+
+test('电源与虚拟器件豁免：电源引脚不报悬空/单脚，测试点与 IC 插座不要求封装', () => {
+  const { warnings } = runERC(virtualProject());
+  const floating = byCode(warnings, 'FLOATING_PIN');
+  const missing = byCode(warnings, 'MISSING_FOOTPRINT');
+
+  assert.deepEqual([...new Set(floating.map((warning) => warning.ref.designator))].sort(), ['R1', 'TP1', 'X1']);
+  assert.equal(floating.length, 5);
+  assert.equal(warnings.some((warning) => warning.ref && warning.ref.designator === '#PWR01'), false);
+  assert.equal(warnings.some((warning) => warning.ref && warning.ref.designator === '#PWR02'), false);
+
+  assert.deepEqual(missing.map((warning) => warning.ref.designator), ['R1'], '只有实体器件要求封装');
+  assert.equal(byCode(warnings, 'SINGLE_PIN_NET').length, 0, '电源网络不报单脚网络');
+  assert.equal(byCode(warnings, 'UNCONNECTED_WIRE').length, 0);
 });
 
 test('junction 合并后原来的两个单脚网络变成一个正常网络', () => {

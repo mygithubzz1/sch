@@ -49,6 +49,8 @@ function checkNets(analysis, warnings) {
 
     if (net.pins.length === 1) {
       const pin = net.pins[0];
+      // 电源/地符号的引脚天生只连一个网络，不应算作悬空或单脚网络。
+      if (pin.power === true) continue;
       const isolated = net.wires.length === 0 && net.labels.length === 0;
       warnings.push({
         code: isolated ? 'FLOATING_PIN' : 'SINGLE_PIN_NET',
@@ -79,6 +81,16 @@ function checkNets(analysis, warnings) {
   }
 }
 
+/** 判断实例是否必须有 PCB 封装：电源/地、虚拟器件（socket、测试点）不需要。 */
+function needsFootprint(component) {
+  if (component.power) return false;
+  if (component.virtual) return false;
+  const refPrefix = typeof component.refPrefix === 'string' ? component.refPrefix.trim().toUpperCase() : '';
+  if (refPrefix.startsWith('#')) return false;
+  if (refPrefix === 'TP') return false;
+  return true;
+}
+
 function checkComponents(analysis, warnings) {
   const byDesignator = new Map();
   for (const component of analysis.components) {
@@ -106,7 +118,7 @@ function checkComponents(analysis, warnings) {
   }
 
   for (const component of analysis.components) {
-    if (component.power) continue;
+    if (!needsFootprint(component)) continue;
     const footprint = typeof component.footprintId === 'string' ? component.footprintId.trim() : '';
     if (footprint !== '') continue;
     warnings.push({
