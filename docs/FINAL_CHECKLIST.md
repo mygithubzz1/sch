@@ -167,14 +167,9 @@ NETLIST demo-mcu ok=true nets=16 pins=26 components=8 warnings=10
 
 ## 10. Git 历史摘要
 
-- 提交总数：**63**（含本清单提交）。
-- 类型分布（截至本提交前 62 个 + 本 docs 提交 = 63）：
-  - `feat` 24
-  - `test` 13
-  - `docs` 12（含本清单）
-  - `fix` 8
-  - `chore` 5
-  - `refactor` 1
+- 提交总数：**65**（含本清单定稿提交及其后的 2 个 docs 修订提交）。
+- 类型分布：`feat` 24 / `test` 13 / `docs` 14 / `fix` 8 / `chore` 5 / `refactor` 1 = **65**。
+- 复算命令：`git rev-list --count HEAD` 与 `git log --pretty=format:%s | ...`（上方数字为实际输出）。
 - 非 conventional 提交：**0**（全部匹配 `<type>(<scope>): 简述` 或 `<type>: 简述`）。
 - 未发现临时文件/构建产物/依赖目录被提交；未使用 `--amend`、`rebase`、`reset --hard`、切分支或 push。
 - T12 收尾提交：
@@ -184,7 +179,9 @@ NETLIST demo-mcu ok=true nets=16 pins=26 components=8 warnings=10
 f66c0dd fix(ui): 导出网表对话框的复制/下载按钮未挂载
 bc1e30a test(browser): 新增 headless Chrome 主流程验证与证据
 c93713a chore: 移除应用启动的调试 console.log
-（本清单所在 docs 提交）
+6fb9c58 docs(final): 新增 T12 最终交付清单并同步 README
+5d897ea docs(final): 补充评审遗留 R3（编辑器回退色）处理说明
+（本统计校准提交为第 7 个 T12 收尾提交）
 ```
 
 ## 11. 已知限制
