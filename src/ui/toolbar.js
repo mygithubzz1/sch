@@ -9,6 +9,8 @@ const MENU_DEFINITIONS = Object.freeze([
     items: [
       { id: 'newProject', label: '新建工程', shortcut: 'Ctrl+N' },
       { id: 'openProject', label: '打开工程…', shortcut: 'Ctrl+O' },
+      { id: 'openExampleLed', label: '打开示例：LED 指示灯' },
+      { id: 'openExampleMcu', label: '打开示例：MCU 最小系统' },
       { id: 'saveProject', label: '保存', shortcut: 'Ctrl+S' },
       { id: 'saveProjectAs', label: '另存为…', shortcut: 'Ctrl+Shift+S' },
       { separator: true },

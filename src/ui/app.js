@@ -24,6 +24,7 @@ import { clear, el } from './dom.js';
 import { confirmDialog, hasOpenModal, openModal, promptDialog } from './dialogs/modal.js';
 import { openExportDialog } from './dialogs/export-dialog.js';
 import { openAboutDialog, openShortcutsDialog, openTipsDialog } from './dialogs/help-dialog.js';
+import { getExampleProject } from './example-projects.js';
 import { bindHotkeys } from './hotkeys.js';
 import { buildLayout, createModeBar } from './layout.js';
 import { createLayersPanel } from './panels/layers-panel.js';
@@ -642,6 +643,39 @@ export async function startApp(rootEl, options = {}) {
     }
   }
 
+  async function openExample(exampleId) {
+    const example = getExampleProject(exampleId);
+    if (!example) {
+      showToast('找不到示例工程：' + exampleId, 'warn');
+      return;
+    }
+    if (mode === 'footprint') {
+      const exited = await exitFootprintMode();
+      if (!exited) return;
+    }
+    if (dirty) {
+      const discard = await confirmDialog({
+        root: layout.modalRoot,
+        title: '打开示例工程',
+        message: '当前工程有未保存的修改，打开示例将丢弃这些修改。',
+        confirmLabel: '打开示例',
+        danger: true,
+      });
+      if (!discard) return;
+    }
+    try {
+      const parsed = deserializeProject(JSON.stringify(example.data));
+      if (!parsed.project) {
+        showMessageDialog('无法打开示例工程', parsed.warnings.length > 0 ? parsed.warnings : ['示例工程解析失败']);
+        return;
+      }
+      const project = applyDefaultLibraries(parsed.project, libs);
+      await loadProject(project, '已打开示例工程：' + example.label);
+    } catch (error) {
+      handleError(error, '打开示例工程');
+    }
+  }
+
   function saveProject() {
     try {
       const project = store.getProject();
@@ -1097,6 +1131,8 @@ export async function startApp(rootEl, options = {}) {
   const toolbarActions = {
     newProject: () => { void newProject(); },
     openProject: () => openProject(),
+    openExampleLed: () => { void openExample('led'); },
+    openExampleMcu: () => { void openExample('mcu'); },
     saveProject: () => saveProject(),
     saveProjectAs: () => { void saveProjectAs(); },
     exportNetlist: () => openNetlistDialog(),
