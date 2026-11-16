@@ -155,7 +155,7 @@
 | 测试代码行数 | 7276 |
 | 最大文件 | src/ui/app.js 1350 行；properties-panel.js 891；connectivity.js 749 |
 | 服务器冒烟 | 83/83 资源检查通过 |
-| 提交数 | 57（本次评审新增 9 个提交，见附录） |
+| 提交数 | 58（本次评审新增 9 个提交，见附录） |
 | 临时文件误提交 | 0（`git log --all --name-only` 扫描无 tmp/temp/node_modules） |
 
 ## 9. 验证命令与输出
@@ -189,7 +189,7 @@ $ GET /examples/demo-led.json# 200 application/json
   6. `76cd30f` test(ui): 将 examples 定义为数据导入白名单并覆盖动态导入降级
   7. `aca08fe` chore(pkg): 增加 npm run smoke 冒烟脚本入口
   8. `446992b` docs(images): 按 LED 示例文案重新生成原理图与网表界面截图
-  9. `docs(review)` docs(review): 新增 T11 评审报告并同步 README/USAGE 文档（本文件）
+  9. `7011d32` docs(review): 新增 T11 评审报告并同步 README/USAGE 文档（本文件首版；随后的修订提交仅补记哈希与提交数）
 
 ## 11. 证据文件
 
