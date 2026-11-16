@@ -23,7 +23,7 @@
 node server.mjs      # 或 npm start
 ```
 
-浏览器打开 <http://localhost:8080>（`PORT` 环境变量可改端口）。无需 `npm install`。
+浏览器打开 <http://127.0.0.1:8080>（服务器默认只监听本机；`PORT` 可改端口，`HOST=0.0.0.0` 可放开局域网）。无需 `npm install`。
 首次启动可点击「开始使用」，然后通过「文件 → 打开示例：LED 指示灯」立即看到一张完整电路；
 完整操作步骤、快捷键、网表格式与 FAQ 见 **[docs/USAGE.md](docs/USAGE.md)**。
 
@@ -81,7 +81,7 @@ core          ID、几何、事件总线、命令栈、schema
 sch/
 ├── index.html              # 应用外壳
 ├── server.mjs              # 零依赖静态服务器（导出 createServer 供测试）
-├── package.json            # 无依赖，scripts: start / test
+├── package.json            # 无依赖，scripts: start / test / smoke
 ├── .gitattributes          # 统一 LF 换行
 ├── src/
 │   ├── main.js             # bootstrap(root) 启动入口
@@ -100,7 +100,11 @@ sch/
 │   ├── ARCHITECTURE.md     # 分层架构与 ADR
 │   ├── CONTRACTS.md        # 接口契约（唯一权威）
 │   ├── USAGE.md            # 使用教程（含截图与 FAQ）
-│   └── images/             # 界面截图
+│   ├── REVIEW.md           # T11 代码评审报告（发现 / 修复 / 指标）
+│   ├── images/             # 界面截图
+│   └── review/             # 评审证据（修复前后截图、CJK 复现页）
+├── scripts/
+│   └── smoke.mjs           # npm run smoke：随机端口静态资源冒烟
 └── test/                   # node:test 用例（镜像 src/ 的层目录）
 ```
 
@@ -114,7 +118,7 @@ npm run smoke       # 启动随机端口服务器并冒烟请求全部静态资�
 
 - 运行环境：Node.js 22+（使用内置 `node:test` 与 JSON 模块动态导入）；浏览器需现代 Chrome / Edge（支持 JSON 模块动态导入，约 123+）。旧版浏览器仍可启动编辑器，打开示例时会在对话框提示升级。
 - 默认只监听回环地址；需要在局域网访问时显式放开：`HOST=0.0.0.0 node server.mjs` 或 `node server.mjs --host 0.0.0.0`。以点开头的路径段（`.git`、`.agent-teams`、`.env` 等）一律返回 404。
-- 全部用例当前 362 个，`npm test` 全绿；纯逻辑层（core/model/library/netlist/render 的纯函数/io 序列化）不依赖 DOM，可直接在 Node 中测试。
+- 全部用例当前 413 个，`npm test` 全绿；纯逻辑层（core/model/library/netlist/render 的纯函数/io 序列化）不依赖 DOM，可直接在 Node 中测试。
 - 服务器冒烟：`node server.mjs` 后访问 `/`、`/src/main.js`、`/examples/demo-led.json` 应返回 200 与正确 MIME。
 
 ## Git 规范
