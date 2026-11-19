@@ -50,9 +50,44 @@ function designatorOf(instance) {
 }
 
 function electricalTypeOf(pin) {
-  return pin && typeof pin.electricalType === 'string' && pin.electricalType !== ''
-    ? pin.electricalType
-    : 'passive';
+  const raw = pin && typeof pin.electricalType === 'string' ? pin.electricalType : '';
+  // 旧词汇 not_connected 是 no_connect 的可读别名，统一成 KiCad 基础类型。
+  if (raw === 'not_connected') return 'no_connect';
+  return raw !== '' ? raw : 'passive';
+}
+
+/** 引脚是否带「不连接」标志：显式 noConnect，或旧词汇 not_connected 迁移而来。 */
+function noConnectOf(pin) {
+  return Boolean(pin && (pin.noConnect === true || pin.electricalType === 'not_connected'));
+}
+
+function freeOf(pin) {
+  return Boolean(pin && pin.free === true);
+}
+
+/** 读取 net class：project.netClassAssignments[netName]，缺省 "Default"。 */
+function netClassOf(project, netName) {
+  const assignments = project && typeof project === 'object' ? project.netClassAssignments : null;
+  if (!assignments || typeof assignments !== 'object' || Array.isArray(assignments)) return 'Default';
+  const className = Object.prototype.hasOwnProperty.call(assignments, netName) ? assignments[netName] : null;
+  return typeof className === 'string' && className.trim() !== '' ? className : 'Default';
+}
+
+/** 深拷贝纯数据（component.kicad 透传时避免调用方后续修改影响分析结果）。 */
+function cloneData(value) {
+  if (value === null || typeof value !== 'object') return value;
+  if (typeof structuredClone === 'function') {
+    try {
+      return structuredClone(value);
+    } catch {
+      // 含不可克隆值时退化为 JSON 往返。
+    }
+  }
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch {
+    return value;
+  }
 }
 
 /** 电源符号（power:true）的 power_in / power_out 引脚，其引脚名即全局网络名。 */
@@ -329,26 +364,44 @@ function assignNetNames(nets, warnings) {
 }
 
 /**
- * 把明细网络转换为契约净结构 { name, pins:[{designator,pinNumber,pinName,symbolId,instanceId,sheetId}] }。
+ * 把明细网络转换为契约净结构：
+ * { name, class, pins:[{ designator, pinNumber, pinName, symbolId, instanceId, sheetId,
+ *                       pinfunction, electricalType, pintype, noConnect, free }] }。
+ * pinfunction = 符号引脚名（可读原文，不做 {slash} 编码）；pintype 是基础电气类型，
+ * no_connect/free 修饰由导出器按 §8.7 拼接。
  * @param {object} net 明细网络
- * @returns {{ name: string, pins: object[] }}
+ * @returns {{ name: string, class: string, pins: object[] }}
  */
 export function netToContract(net) {
-  const pins = [...net.pins]
+  const source = net && typeof net === 'object' ? net : {};
+  const className =
+    typeof source.class === 'string' && source.class.trim() !== '' ? source.class : 'Default';
+  const pins = [...asArray(source.pins)]
     .sort(
       (left, right) =>
         naturalCompare(left.designator, right.designator) ||
         naturalCompare(left.pinNumber, right.pinNumber),
     )
-    .map((pin) => ({
-      designator: pin.designator,
-      pinNumber: pin.pinNumber,
-      pinName: pin.pinName,
-      symbolId: pin.symbolId,
-      instanceId: pin.instanceId,
-      sheetId: pin.sheetId,
-    }));
-  return { name: net.name, pins };
+    .map((pin) => {
+      const pinName = typeof pin.pinName === 'string' ? pin.pinName : '';
+      const rawType = typeof pin.electricalType === 'string' ? pin.electricalType : '';
+      const electricalType =
+        rawType === 'not_connected' ? 'no_connect' : rawType !== '' ? rawType : 'passive';
+      return {
+        designator: pin.designator,
+        pinNumber: pin.pinNumber,
+        pinName,
+        symbolId: pin.symbolId,
+        instanceId: pin.instanceId,
+        sheetId: pin.sheetId,
+        pinfunction: pinName,
+        electricalType,
+        pintype: electricalType,
+        noConnect: pin.noConnect === true || rawType === 'not_connected',
+        free: pin.free === true,
+      };
+    });
+  return { name: source.name, class: className, pins };
 }
 
 /**
@@ -412,6 +465,8 @@ export function analyzeSheet(project, sheet, options = {}) {
       resolved: Boolean(def && Array.isArray(def.pins)),
       pins: [],
     };
+    // 契约扩展：把 symbol.kicad 原样透传给导出器（未提供时不产生该键，保持旧形状）。
+    if (instance.kicad !== undefined) component.kicad = cloneData(instance.kicad);
     components.push(component);
 
     if (!component.resolved) {
@@ -427,10 +482,13 @@ export function analyzeSheet(project, sheet, options = {}) {
     for (const pin of def.pins) {
       if (!pin || typeof pin !== 'object') continue;
       const type = electricalTypeOf(pin);
+      const noConnect = noConnectOf(pin);
+      const free = freeOf(pin);
       const pinNumber = pin.number === undefined || pin.number === null ? '' : String(pin.number);
       const pinName = typeof pin.name === 'string' ? pin.name : '';
-      component.pins.push({ number: pinNumber, name: pinName, electricalType: type });
-      if (type === 'not_connected') continue;
+      component.pins.push({ number: pinNumber, name: pinName, electricalType: type, noConnect, free });
+      // 基础类型 no_connect 的引脚仍按既有规则不进入网络；导出器可从 component.pins 读取完整引脚。
+      if (type === 'no_connect') continue;
 
       const point = transformPoint(
         { x: toFinite(pin.x), y: toFinite(pin.y) },
@@ -450,6 +508,8 @@ export function analyzeSheet(project, sheet, options = {}) {
         instanceId: component.instanceId,
         sheetId,
         electricalType: type,
+        noConnect,
+        free,
         power: powerName !== null,
         x: point.x,
         y: point.y,
@@ -631,6 +691,7 @@ export function analyzeSheet(project, sheet, options = {}) {
   nets.sort((left, right) => naturalCompare(left.name, right.name));
   nets.forEach((net, index) => {
     net.id = 'net-' + (index + 1);
+    net.class = netClassOf(project, net.name);
   });
 
   const stats = {
@@ -762,6 +823,7 @@ export function analyzeProject(project, options = {}) {
   nets.sort((left, right) => naturalCompare(left.name, right.name));
   nets.forEach((net, index) => {
     net.id = 'net-' + (index + 1);
+    net.class = netClassOf(project, net.name);
   });
   stats.nets = nets.length;
 

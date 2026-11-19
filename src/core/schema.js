@@ -93,10 +93,97 @@ function validateTitle(errors, title, path) {
   requireString(errors, title.company, path + '.company');
   requireString(errors, title.rev, path + '.rev');
   requireString(errors, title.date, path + '.date');
+  if (title.source !== undefined) requireString(errors, title.source, path + '.source');
   const comments = title.comments;
   if (typeof comments === 'string') return;
   if (Array.isArray(comments) && comments.every((item) => typeof item === 'string')) return;
   push(errors, path + '.comments', '期望字符串或字符串数组，实际为' + describe(comments));
+}
+
+/** 可选字符串字段：缺失（undefined）时放行，出现即校验类型。 */
+function optionalString(errors, value, path) {
+  if (value === undefined) return;
+  requireString(errors, value, path);
+}
+
+/** 校验 project.kicad（§8.1）：字段缺失合法，出现即校验形状。 */
+function validateProjectKicad(errors, kicad, path) {
+  if (kicad === undefined) return;
+  if (!requireObject(errors, kicad, path)) return;
+  optionalString(errors, kicad.source, path + '.source');
+  optionalString(errors, kicad.tool, path + '.tool');
+  optionalString(errors, kicad.date, path + '.date');
+  optionalString(errors, kicad.version, path + '.version');
+  if (kicad.libraries === undefined) return;
+  if (!requireArray(errors, kicad.libraries, path + '.libraries')) return;
+  kicad.libraries.forEach((library, index) => {
+    const itemPath = path + '.libraries[' + index + ']';
+    if (!requireObject(errors, library, itemPath)) return;
+    requireString(errors, library.logical, itemPath + '.logical');
+    requireString(errors, library.uri, itemPath + '.uri');
+  });
+}
+
+/** 校验 project.netClassAssignments（§8.2）：值必须是非空字符串。 */
+function validateNetClassAssignments(errors, assignments, path) {
+  if (assignments === undefined) return;
+  if (!requireObject(errors, assignments, path)) return;
+  for (const [netName, className] of Object.entries(assignments)) {
+    if (netName === '') {
+      push(errors, path, '网络名不能为空字符串');
+      continue;
+    }
+    if (typeof className !== 'string' || className.trim() === '') {
+      push(errors, path + '.' + netName, '期望非空字符串，实际为' + describe(className));
+    }
+  }
+}
+
+/** 校验 sheet.kicad（§8.3）：number/name/tstamps 为可选字符串。 */
+function validateSheetKicad(errors, kicad, path) {
+  if (kicad === undefined) return;
+  if (!requireObject(errors, kicad, path)) return;
+  optionalString(errors, kicad.number, path + '.number');
+  optionalString(errors, kicad.name, path + '.name');
+  optionalString(errors, kicad.tstamps, path + '.tstamps');
+}
+
+/** 校验 symbol.kicad 的 properties / fields：保序数组，name 必填，value 可选字符串。 */
+function validateKicadEntries(errors, entries, path) {
+  if (entries === undefined) return;
+  if (!requireArray(errors, entries, path)) return;
+  entries.forEach((entry, index) => {
+    const itemPath = path + '[' + index + ']';
+    if (!requireObject(errors, entry, itemPath)) return;
+    requireString(errors, entry.name, itemPath + '.name', { nonEmpty: true });
+    optionalString(errors, entry.value, itemPath + '.value');
+  });
+}
+
+/** 校验 symbol.kicad（§8.4）。 */
+function validateSymbolKicad(errors, kicad, path) {
+  if (kicad === undefined) return;
+  if (!requireObject(errors, kicad, path)) return;
+  optionalString(errors, kicad.datasheet, path + '.datasheet');
+  optionalString(errors, kicad.description, path + '.description');
+  optionalString(errors, kicad.tstamps, path + '.tstamps');
+  if (kicad.libsource !== undefined) {
+    const libsourcePath = path + '.libsource';
+    if (requireObject(errors, kicad.libsource, libsourcePath)) {
+      optionalString(errors, kicad.libsource.lib, libsourcePath + '.lib');
+      optionalString(errors, kicad.libsource.part, libsourcePath + '.part');
+      optionalString(errors, kicad.libsource.description, libsourcePath + '.description');
+    }
+  }
+  validateKicadEntries(errors, kicad.properties, path + '.properties');
+  validateKicadEntries(errors, kicad.fields, path + '.fields');
+  if (kicad.sheetpath !== undefined) {
+    const sheetpathPath = path + '.sheetpath';
+    if (requireObject(errors, kicad.sheetpath, sheetpathPath)) {
+      optionalString(errors, kicad.sheetpath.names, sheetpathPath + '.names');
+      optionalString(errors, kicad.sheetpath.tstamps, sheetpathPath + '.tstamps');
+    }
+  }
 }
 
 function validateSymbol(errors, symbol, path) {
@@ -113,6 +200,7 @@ function validateSymbol(errors, symbol, path) {
     push(errors, path + '.footprintId', '期望字符串或 null，实际为' + describe(symbol.footprintId));
   }
   requireObject(errors, symbol.fields, path + '.fields');
+  validateSymbolKicad(errors, symbol.kicad, path + '.kicad');
 }
 
 function validateWire(errors, wire, path) {
@@ -169,6 +257,7 @@ function validateSheet(errors, sheet, index) {
   validateCollection(errors, sheet, 'labels', path, validateLabel);
   validateCollection(errors, sheet, 'texts', path, validateTextEntity);
   validateTitle(errors, sheet.title, path + '.title');
+  validateSheetKicad(errors, sheet.kicad, path + '.kicad');
 }
 
 function validateLibrary(errors, library) {
@@ -215,6 +304,8 @@ export function validateProject(json) {
 
   validateLibrary(errors, json.library);
   validateMeta(errors, json.meta);
+  validateProjectKicad(errors, json.kicad, 'kicad');
+  validateNetClassAssignments(errors, json.netClassAssignments, 'netClassAssignments');
   return { ok: errors.length === 0, errors };
 }
 

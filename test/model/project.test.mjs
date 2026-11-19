@@ -193,6 +193,125 @@ test('normalizeProject 保留原 id 并清洗数值与枚举', () => {
   assert.equal(sheet.title.title, 'A');
 });
 
+test('createProject 接受并保留 kicad / netClassAssignments，缺省时保持旧形状', () => {
+  const project = createProject('富属性工程', {
+    kicad: {
+      source: 'C:\\workspace\\demo.kicad_sch',
+      tool: 'Eeschema 9.0.8',
+      date: '2026-11-19T10:25:58+0800',
+      version: 'E',
+      libraries: [{ logical: 'TinyTapeout', uri: 'C:\\libs\\TinyTapeout.kicad_sym' }],
+    },
+    netClassAssignments: { GND: 'pwr', 'SDI/out0': 'ioout', empty: '' },
+  });
+
+  assert.deepEqual(project.kicad, {
+    source: 'C:\\workspace\\demo.kicad_sch',
+    tool: 'Eeschema 9.0.8',
+    date: '2026-11-19T10:25:58+0800',
+    version: 'E',
+    libraries: [{ logical: 'TinyTapeout', uri: 'C:\\libs\\TinyTapeout.kicad_sym' }],
+  });
+  assert.deepEqual(project.netClassAssignments, { GND: 'pwr', 'SDI/out0': 'ioout' });
+  assert.deepEqual(JSON.parse(JSON.stringify(project)), project);
+
+  const legacy = createProject('旧工程');
+  assert.equal('kicad' in legacy, false);
+  assert.equal('netClassAssignments' in legacy, false);
+  assert.equal('kicad' in normalizeProject(legacy), false);
+  assert.equal('netClassAssignments' in normalizeProject(legacy), false);
+});
+
+test('normalizeProject 深拷贝并保留 kicad / netClassAssignments，JSON 往返不丢字段', () => {
+  const project = createProject('规范化', {
+    kicad: { source: '/tmp/a.kicad_sch', libraries: [{ logical: 'L', uri: '/tmp/L.kicad_sym' }] },
+    netClassAssignments: { MID: 'ioout' },
+  });
+  const roundTrip = normalizeProject(JSON.parse(JSON.stringify(project)));
+  assert.deepEqual(roundTrip, project);
+
+  const normalized = normalizeProject({
+    name: '外部工程',
+    kicad: { source: 'x', unknown: 1 },
+    netClassAssignments: { A: 'pwr', B: 42, C: '   ', '': 'x' },
+  });
+  assert.equal(normalized.kicad.source, 'x');
+  assert.equal('unknown' in normalized.kicad, false);
+  assert.deepEqual(normalized.netClassAssignments, { A: 'pwr' });
+});
+
+test('createSheet 支持 kicad 图纸路径与标题栏 source / comments 双形态', () => {
+  const sheet = createSheet('RP2040', {
+    index: 1,
+    kicad: { number: '2', name: '/RP2040/', tstamps: '/5384e408-8f0c-411c-b558-df35c2e889ec/' },
+    title: {
+      title: 'RP2040 Basic Support',
+      company: 'Psychogenic Technologies',
+      rev: '1.0.3',
+      date: '2023-11-22',
+      source: 'rp2040.kicad_sch',
+      comments: ['See LICENSE.txt', 'Licensed under Apache 2.0'],
+    },
+  });
+  assert.deepEqual(sheet.kicad, {
+    number: '2',
+    name: '/RP2040/',
+    tstamps: '/5384e408-8f0c-411c-b558-df35c2e889ec/',
+  });
+  assert.equal(sheet.title.source, 'rp2040.kicad_sch');
+  assert.deepEqual(sheet.title.comments, ['See LICENSE.txt', 'Licensed under Apache 2.0']);
+
+  const defaults = createSheet('默认图');
+  assert.equal('kicad' in defaults, false);
+  assert.equal('source' in defaults.title, false);
+  assert.equal(defaults.title.comments, '');
+
+  const tooMany = normalizeProject({
+    name: '截断',
+    sheets: [
+      {
+        name: 'S',
+        title: { comments: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 11] },
+      },
+    ],
+  });
+  assert.equal(tooMany.sheets[0].title.comments.length, 9);
+  assert.deepEqual(tooMany.sheets[0].title.comments, ['1', '2', '3', '4', '5', '6', '7', '8', '9']);
+});
+
+test('createSymbolInstance 接受并保留 symbol.kicad（保序数组、区分无值/空串）', () => {
+  const instance = createSymbolInstance({
+    symbolId: 'C_Small',
+    designator: 'C1',
+    kicad: {
+      datasheet: '~',
+      description: '电容',
+      tstamps: '00db537f-1037-4fb6-9d9b-01d9f1f6a64d',
+      libsource: { lib: 'TinyTapeout', part: 'C_Small', description: 'Unpolarized capacitor' },
+      properties: [{ name: 'MPN', value: 'CL10A105KA8NNNC' }, { name: 'dnp' }, { name: 'JLC', value: '' }],
+      fields: [{ name: 'Footprint', value: 'C_0603' }, { name: 'Datasheet' }, { name: 'Description', value: '' }],
+      sheetpath: { names: '/RP2040/', tstamps: '/uuid/' },
+    },
+  });
+
+  assert.equal(instance.kicad.datasheet, '~');
+  assert.deepEqual(instance.kicad.libsource, {
+    lib: 'TinyTapeout',
+    part: 'C_Small',
+    description: 'Unpolarized capacitor',
+  });
+  assert.deepEqual(instance.kicad.properties[0], { name: 'MPN', value: 'CL10A105KA8NNNC' });
+  assert.deepEqual(instance.kicad.properties[1], { name: 'dnp' });
+  assert.equal('value' in instance.kicad.properties[1], false);
+  assert.deepEqual(instance.kicad.properties[2], { name: 'JLC', value: '' });
+  assert.deepEqual(instance.kicad.fields[1], { name: 'Datasheet' });
+  assert.deepEqual(instance.kicad.fields[2], { name: 'Description', value: '' });
+  assert.deepEqual(instance.kicad.sheetpath, { names: '/RP2040/', tstamps: '/uuid/' });
+
+  assert.deepEqual(JSON.parse(JSON.stringify(instance)), instance);
+  assert.equal('kicad' in createSymbolInstance(), false);
+});
+
 test('findSheetById / findEntityById / findEntityWithKind', () => {
   const project = createProject('查找');
   const sheet = project.sheets[0];
