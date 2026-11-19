@@ -167,6 +167,7 @@ test('库符号：libpart → SymbolDef（引脚几何/名称/类型、0 引脚�
   const smallC = symbolDefOf(project, 'TinyTapeout:C_Small');
   assert.equal(smallC.name, 'C_Small');
   assert.equal(smallC.refPrefix, 'C');
+  assert.deepEqual(smallC.libsource, { lib: 'TinyTapeout', part: 'C_Small' });
   assert.equal(smallC.description, 'Unpolarized capacitor, small symbol');
   assert.equal(smallC.pins.length, 2);
   assert.deepEqual(

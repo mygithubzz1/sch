@@ -226,7 +226,11 @@ function buildLibrarySymbol(libpart, context) {
   if (typeof libpart.docs === 'string') raw.docs = libpart.docs;
   if (asArray(libpart.fields).length > 0) raw.fields = asArray(libpart.fields).slice();
   try {
-    return normalizeSymbolDef(raw);
+    const def = normalizeSymbolDef(raw);
+    // §8.10：libpart@lib 优先取库符号的 libsource.lib；显式带回原始 lib/part，
+    // 避免 T3 只能从 id 前缀反推（id 仍保持 "lib:part" 形态）。
+    def.libsource = { lib: toText(libpart.lib, ''), part: toText(libpart.part, '') };
+    return def;
   } catch (error) {
     warn(context.warnings, 'SYMBOL_BUILD_FAILED', '构建库符号 ' + id + ' 失败：' + (error && error.message));
     return null;
