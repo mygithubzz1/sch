@@ -1,6 +1,14 @@
 # KiCad 9 网表格式规范与数据契约（version `E`）
 
-本文是 schematic-studio 导出 / 导入 KiCad 9 网表的**唯一格式与数据契约**。T2（数据模型 / schema / 连通性）、T3（导出器）、T4（解析导入器）、T5（UI 入口）的实现与评审都以本文为准；与本文冲突的实现视为缺陷。
+> [!IMPORTANT]
+> **本文已被 [`NETLIST_KICAD.md`](./NETLIST_KICAD.md) 取代（存档保留）。**
+>
+> - **现行开发者参考**：[`NETLIST_KICAD.md`](./NETLIST_KICAD.md)——长期维护的格式要点、字段映射、扩展点与排错速查。
+> - **接口权威**：[`CONTRACTS.md`](./CONTRACTS.md)。
+> - 本文保留的原因：它是 T1 阶段的**一次性实测规范**，逐条记录了黄金样本上的原始测量（含行号、出现次数与「已证伪的假设」14 条），是后续勘误与决策追溯的依据。**不要按本文实现新代码**；与 `NETLIST_KICAD.md` 或代码冲突时，以那两者为准。
+> - 已知被后续实现细化的两处：①`sheet.title.comments` 与 `symbol.kicad.tstamps` 现均为**双形态**（`string | string[]`）；②导入器会为 108 个网络写 `netClassAssignments`（含 63 个 `Default`），与本文 §8.2「不写 Default」的原始口径相反，但不影响导出回退。
+
+本文最初是 schematic-studio 导出 / 导入 KiCad 9 网表的格式与数据契约，用于锁定 T1–T5 的实现口径。
 
 - **权威样本**：`examples/tinytapeout-demo.net`（KiCad **9.0.8** 导出，`(version "E")`，254285 字节 / 4680 行，由 `Eeschema 9.0.8-6-gca86c82f9b4-dirty` 生成）。
 - **本文所有数字、行号、取值都可在该文件上用 §12 的脚本复算**；没有凭记忆写下的「KiCad 应该如此」。凡属推断而非实测，均显式标注「（推断）」。
