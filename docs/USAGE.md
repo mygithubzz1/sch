@@ -139,6 +139,8 @@ node server.mjs
 
 文件级格式与 KiCad 9 写出的文本一致，可直接替换原文件：UTF-8 无 BOM、CRLF 行尾、**文件末尾没有换行**、每层缩进 2 空格、结构性子元素各占一行、闭括号并回最后一行。
 
+完整的语法定义、取值词汇、转义规则与数据契约见 **[NETLIST_KICAD_SPEC.md](NETLIST_KICAD_SPEC.md)**（由 `examples/tinytapeout-demo.net` 实测归纳）。
+
 排序规则（与 KiCad 9 输出对齐）：
 
 - `components`：先按图纸顺序，再按图纸内位号的自然序。`examples/tinytapeout-demo.net` 里 `C4`（索引 3）在 `C10`（索引 9）之前，而 `C29` 属于 `/RP2040/` 图纸、`C42` 属于根图纸，所以 `C42`（索引 28）排在 `C29`（索引 125）之前。
