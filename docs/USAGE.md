@@ -45,6 +45,8 @@ node server.mjs
 
 上图是载入 LED 示例后的编辑界面：画布中自上而下是 VCC、R1（220R）、D1（LED）、GND，三段导线把电源经限流电阻接到 LED 再回到 GND；左侧元件库显示 18 个内置符号缩略图；右侧「图纸」标签页显示图纸名称、标题、公司、版本、日期与工程名称/网格/图纸数/符号库/封装库；底部网表尚未生成；底部状态栏显示坐标、网格 2.54 mm、缩放、工具、网络数、吸附状态。图中同时展开了「文件」菜单（新建工程、打开工程…、打开示例：LED 指示灯 / MCU 最小系统、保存、另存为…、导出网表…、导出 SVG…、导出 PNG…、导出封装库 JSON…、恢复本地草稿）。
 
+> 该截图拍摄于网表导入功能上线之前：当前「文件」菜单在「打开工程…」与「打开示例…」之间还多一项「导入 KiCad 网表…」，用法见第 8 章。
+
 ### 3.1 放置元件
 
 1. 在左侧「元件库」面板的搜索框输入关键字（如 `R`、`LED`），或用分类筛选。
@@ -106,8 +108,9 @@ node server.mjs
 
 菜单「文件 → 导出网表…」或按 `Ctrl+E`（也可点网表面板的「导出…」）打开「导出网表」对话框：
 
-- 顶部选择格式：**JSON 网表**（.net.json）、**CSV 网表**（.net.csv）、**KiCad 6 网表**（.net）、**Protel / PCBNEW 网表**（.net）。
+- 顶部选择格式：**JSON 网表**（.net.json）、**CSV 网表**（.net.csv）、**KiCad 9 网表**（.net，version E）、**Protel / PCBNEW 网表**（.net）。
 - 统计行显示当前工程的「网络 / 引脚 / 元件 / 警告」；预览区实时生成内容。
+- 选中 KiCad 9 时格式卡片显示「KiCad 9 (version E)」，下方提示「S-表达式网表，UTF-8 无 BOM、CRLF 行尾」。
 - 「复制」写入剪贴板，「下载文件」保存到本地，文件名格式为「工程名-图纸名.net.*」。
 
 四种格式说明：
@@ -116,8 +119,42 @@ node server.mjs
 | --- | --- | --- |
 | JSON | `format/version/generator/project/components/nets/warnings/stats`，缩进 2 | 脚本处理、自动化校验 |
 | CSV | 表头 `designator,pin,name,net`，每个引脚一行，含逗号/引号时自动转义，未连接引脚 net 为空 | 表格查看、导入 Excel |
-| KiCad 6 | S-表达式 `(export (version "E") (design) (components) (nets))`，含 pinfunction/pintype | 导入 KiCad 6+ |
+| KiCad 9 | S-表达式 `(export (version "E") (design …) (components …) (libparts …) (libraries …) (nets …))`，含 sheet/title_block/comment、libsource、property、sheetpath、pinfunction、pintype 与 net class | 交给 KiCad 6+ / KiCad 9 与 PCB 工具，或再导入本编辑器（第 8 章） |
 | Protel / PCBNEW | 文本网表，含 `[Design]`、`[Components]`、`[NETLIST]` 段 | 导入 Protel/Altium 系工具 |
+
+#### 7.1.1 KiCad 9 网表的分节
+
+`(export (version "E") …)` 下固定六个分节，顺序如下：
+
+| 分节 | 内容 |
+| --- | --- |
+| `export` | 根节点，`version` 固定为 `"E"`（KiCad 9 的网表版本号就是 `E`） |
+| `design` | `source`（源 `.kicad_sch` 绝对路径）、`date`（带时区的时间戳）、`tool`；每张图纸一个 `sheet`：`number` / `name`（KiCad 图纸路径，如 `/`、`/RP2040/`）/ `tstamps`，以及 `title_block`（`title`、`company`、`rev`、`date`、`source` 与 `comment 1…9`，9 个槽位固定输出，空槽写作 `(comment (number "4") (value ""))`） |
+| `components` | 每个元件一个 `comp`：`ref`、`value`、`footprint`、`datasheet`、`fields`（Reference / Value / Footprint / Datasheet / Description 五个标准字段）、`libsource`（`lib` + `part`）、`property`（`Sheetname`、`Sheetfile` 等工程属性）、`sheetpath`（`names` + `tstamps`）与 `tstamps` |
+| `libparts` | 每个用到的库符号一个 `libpart`：`lib`、`part`、`description`、`docs`、`footprints`、`fields` 与 `pins`（`pin` 的 `num`、`name`、`type`）；没有引脚的符号（如基准点 `Fiducial`）不输出 `pins` 块 |
+| `libraries` | 每个库一个 `library`：`logical`（库名）与 `uri`（库文件路径） |
+| `nets` | 每个网络一个 `net`：`code`（从 1 连续编号）、`name`、`class`，下面是若干 `node`：`ref` + `pin`，可选 `pinfunction`（引脚名原文，为空时整段省略），以及 `pintype`（`passive`、`input`、`bidirectional` 等基础类型，可带 `+no_connect` / `+free` 修饰，如 `bidirectional+no_connect`、裸 `no_connect`） |
+
+未连接引脚按 KiCad 9 规则合成网络：单个引脚、未进入任何保留网络的自动网络 `N$n` 不写成网络，而写成 `unconnected-(<位号>-<引脚名>-Pad<引脚号>)`，例如 `unconnected-(U3-NC-Pad4)`、`unconnected-(X1-Tri-State-Pad1)`；电源符号只有单脚时不参与该合成（保留其电源网络）。
+
+文件级格式与 KiCad 9 写出的文本一致，可直接替换原文件：UTF-8 无 BOM、CRLF 行尾、**文件末尾没有换行**、每层缩进 2 空格、结构性子元素各占一行、闭括号并回最后一行。
+
+排序规则（与 KiCad 9 输出对齐）：
+
+- `components`：先按图纸顺序，再按图纸内位号的自然序。`examples/tinytapeout-demo.net` 里 `C4`（索引 3）在 `C10`（索引 9）之前，而 `C29` 属于 `/RP2040/` 图纸、`C42` 属于根图纸，所以 `C42`（索引 28）排在 `C29`（索引 125）之前。
+- `nets`：按网络名自然序；同名再按 ASCII 比较。
+- 每个 `net` 内的 `node`：按 `ref`、再按 `pin` 的纯 ASCII 字节序（引脚 `"12"` 排在 `"6"` 之前）。
+- `libparts`：按 `part` 自然序，同 `part` 再比 `lib`。
+
+#### 7.1.2 net class 的来源与缺省值
+
+`net@class` 是 KiCad 的「网络类」，用于给差分对、电源、时钟等网络分组布线约束。导出时按以下顺序取类名（正常路径下第 1 步已由连通性分析填好，后两步是兜底）：
+
+1. 网络对象上的 class（连通性分析的结果，如 `net.class`）；
+2. 工程的网络类映射 `project.netClassAssignments`（网络名 → 类名，连通性分析据此填充 `net.class`；导入 KiCad 网表时自动写入，新建工程默认为空）；
+3. 都没有时写 `Default` —— 所有网络都会输出 `class`，缺省值也是 `Default`，不会省略该字段。
+
+也就是说：新建或手绘的工程导出 KiCad 网表时网络全部是 `Default`；导入 `examples/tinytapeout-demo.net` 后，114 个网络里有 69 个 `Default`，其余 45 个分布到 `pwr`(3)、`pwrhi`(2)、`config`(7)、`clk`(3)、`ioout`(12)、`ioin`(8)、`iobidir`(8)、`usbdiff`(2)，共 9 类。网表面板会给每个网络行显示 class 徽标（鼠标悬停提示「net class：<类名>」）。
 
 ### 7.2 图形与其他导出
 
@@ -125,7 +162,110 @@ node server.mjs
 - **PNG**：菜单「文件 → 导出 PNG…」，按 2 倍分辨率导出当前画布。
 - **封装库 JSON**：菜单「文件 → 导出封装库 JSON…」，导出工程库中的封装定义。
 
-## 8. 保存、打开与恢复
+## 8. 导入 KiCad 网表
+
+编辑器可以把 KiCad 导出的 `.net`（S-表达式，`(export (version "E") …)`）反向重建为可编辑工程：还原元件、库符号、多图纸归属、网络类与「哪个引脚连到哪个网络」的连通关系。这一章用仓库自带的 `examples/tinytapeout-demo.net`（KiCad 9.0.8 实际导出的 150 元件 / 114 网络样本）走一遍完整流程。
+
+### 8.1 操作步骤
+
+1. 「文件 → 导入 KiCad 网表…」打开独立的文件选择器（`accept=".net,text/plain"`，不影响「打开工程…」的 `.schproj.json` 过滤器）。
+2. 选择 `.net` 文件后立即解析：
+   - 解析失败只会弹出「无法导入 KiCad 网表」对话框，逐条列出错误（含行号与错误码，如 `第 1 行 [MISSING_EXPORT] 网表必须以 (export …) 列表开头`），当前工程与选区不会被改动；
+   - 解析成功但当前工程有未保存修改时，弹出确认框「当前工程有未保存的修改，导入网表将丢弃这些修改。」，确认按钮为「导入网表」；
+   - 若当时处于封装编辑模式，会先退出封装模式。
+3. 导入完成后文件选择器关闭，画布自动适配内容，并弹出提示：`已导入 KiCad 网表：元件 150 · 网络 114 · 图纸 2`；如还有非致命提示，会再补一条「导入完成，另有 N 条提示」。
+4. 导入不会自动生成网表：点底部「生成网表」（或菜单「工具 → 生成网表」）后才显示网络、class 与 ERC 结果。
+
+> 导入得到的是普通工程：可以继续放置、连线、改位号/值/封装，也可以 `Ctrl+S` 保存为 `.schproj.json`。KiCad 侧的元数据（design 的 `source`/`tool`/`date`、库 URI、net class、标题栏与 9 槽备注、元件 `libsource`/`fields`/`property`/`sheetpath`/`tstamps`）一并保存在工程的 `kicad` 字段里，重新导出 KiCad 网表时沿用。
+
+### 8.2 导入做了什么
+
+| 步骤 | 行为 |
+| --- | --- |
+| 解析 | 通用 S-表达式词法/语法分析 → 投影为 `version` / `design`（`sheets` + 每图纸 `title_block`）/ `components` / `libparts` / `libraries` / `nets` 六个投影；报错带行号与错误码 |
+| 库符号 | 每个 `libpart` 生成一个工程库符号：矩形本体、按 `pins` 顺序排在左侧的引脚（引脚名/号/电气类型）、`Reference` 前缀取自 `fields`（缺失时按位号推断），`docs`、`footprints`、`ki_keywords`、`ki_fp_filters` 一并保留 |
+| 多图纸 | 按 `design.sheets` 的顺序建图纸（`number` 排序）；`comp.sheetpath` 决定元件归属；图纸显示名取 KiCad 图纸路径的最后一段（`/` → `Root`，`/RP2040/` → `RP2040`），完整的 KiCad 路径仍保存在 `sheet.kicad.name` |
+| 摆放 | 网表不含坐标，按 2.54 mm 网格行优先排列：符号本体宽 12.7 mm、引脚 2.54 mm、引脚引出导线 2.54 mm，每行最宽 420 mm，超出换行；行高取该行最高符号，保证符号/引脚/标签不重叠 |
+| 连通性 | 每个引脚引出一段 2.54 mm 的 stub 导线，导线末端放一个同名网络标签；同名标签在连通性分析中合网，因此重新「生成网表」能推导出与源网表一致的引脚集合。`no_connect` 引脚不引 stub（保持未连接） |
+| 网络名 | 先做 `{slash}` → `/` 解码；跨图纸网络一律用全局标签 + 完整解码名，单图纸且带图纸路径前缀的局部网络用局部标签并去掉前缀 |
+| 网络类 | `net@class` 写入 `project.netClassAssignments`（网络名 → 类名）；`unconnected-(…)` 网络跳过，不建标签也不写映射 |
+| 校验 | 导入结果会过一遍工程校验；非法时返回 `PROJECT_INVALID` 诊断而不是半成品工程 |
+
+### 8.3 完整走查：导入 tinytapeout-demo.net 并对比导出结果
+
+准备：仓库根目录启动 `node server.mjs`，浏览器打开 <http://127.0.0.1:8080>。
+
+**第 1 步 · 导入。** 「文件 → 导入 KiCad 网表…」→ 选择 `examples/tinytapeout-demo.net`。预期看到：
+
+- 提示：`已导入 KiCad 网表：元件 150 · 网络 114 · 图纸 2`；
+- 图纸标签页变为两个：`Root` 与 `RP2040`（元件数分别是 125 与 25）；
+- 画布上是网格阵列的统一矩形符号（左侧一排引脚 + 每脚一段短导线 + 末端标签），不是 KiCad 里的原始版图；
+- 工程名变为 `tinytapeout-demo`（取自 `design.source` 的文件名）。
+
+**第 2 步 · 生成网表看网络与 class。** 点「生成网表」。预期统计行为：`网络 113 / 引脚 583 / 元件 150 / 警告 5`。
+
+- 网络列表每行右侧显示 class 徽标（悬停提示「net class：<类名>」），共 9 类：`Default`、`pwr`、`pwrhi`、`config`、`clk`、`ioin`、`ioout`、`iobidir`、`usbdiff`；
+- 113 = 源网表的 108 个标注网络 + 5 个悬空引脚的单引脚自动网络（`N$1`…`N$5`）；源文件的 6 个 `unconnected-(…)` 网络按设计不重建标签，因此不出现；
+- 5 条警告都是 `SINGLE_PIN_NET`（`N$1`…`N$5`，对应 J15-A8、J15-B8、J16-1、J18-1、X1-1 这些在源网表里本就是 unconnected 的引脚），可以忽略；U3 的第 4 脚带 `no_connect` 标记，不产生导线也不产生警告。
+
+**第 3 步 · 再导出 KiCad 网表。** `Ctrl+E` → 选「KiCad 9 网表」→「下载文件」。预览区首行应是 `(export (version "E")`，格式卡片提示「KiCad 9 (version E)」。
+
+**第 4 步 · 对比「网络名 + 引脚集合」。** 在仓库根目录运行下面这段脚本（导入 → 再导出 → 分别解析两份文本）：
+
+```bash
+node --input-type=module -e "
+import { readFileSync } from 'node:fs';
+import { importKiCadNetlist } from './src/netlist/kicad-import.js';
+import { readKiCadNetlist } from './src/netlist/kicad-reader.js';
+import { generateKiCad } from './src/netlist/index.js';
+const text = readFileSync('examples/tinytapeout-demo.net', 'utf8');
+const { project } = importKiCadNetlist(text);
+const before = readKiCadNetlist(text);
+const after = readKiCadNetlist(generateKiCad(project));
+const key = (doc) => doc.nets.map((n) => n.name + '=' + n.nodes.map((x) => x.ref + '.' + x.pin).sort().join(',')).sort();
+console.log('网络数', before.nets.length, after.nets.length, '网络名+引脚集合一致:', JSON.stringify(key(before)) === JSON.stringify(key(after)));
+"
+```
+
+实测输出：
+
+```text
+网络数 114 114 网络名+引脚集合一致: true
+```
+
+这一趟的完整实测数字（`node --input-type=module` 直接调 `importKiCadNetlist` / `generateKiCad` 得到）：
+
+| 指标 | 源 `.net` | 再导出 |
+| --- | --- | --- |
+| 元件 | 150 | 150 |
+| 网络 | 114 | 114（网络名集合完全相同） |
+| 引脚节点 | 584 | 584（逐网络「排序后 ref.pin 集合」0 差异） |
+| net class | `Default` 69 + 非 `Default` 45 | 逐网络一致（9 类直方图相同） |
+| libparts | 28 | 28 |
+| 图纸 / 标题栏 | 2 图纸、每图纸 9 槽 comment | 一致 |
+| 文件 | 254285 字节 | 254051 字节；UTF-8 无 BOM、4679 处 CRLF、0 处裸 LF、末尾无换行 |
+
+再导出的文本与 KiCad 原文件结构一致、网络名与引脚集合完全相同，但**不是逐字节相同**：全文件只有 2 行不同，都是元件 `tstamps` 的多值写法——`J4` 写了 3 个 UUID（第 1188 行）、`U4` 写了 5 个 UUID（第 2766 行），本编辑器每个元件只保存一个 `tstamps`，所以只写回第一个值（共 234 字节差异，即 254285 − 254051）。这属于元数据保真度差异，不影响网络与引脚语义。
+
+**第 5 步（可选）· 二次往返为不动点。** 把上面脚本改成对 `generateKiCad(project)` 的结果再执行一次 `importKiCadNetlist` → `generateKiCad`，两次输出逐字节相同（254049 字符 / 254051 字节），说明「再导出」的文本本身可以被再次无损读回。
+
+### 8.4 提示、警告与失败
+
+导入结果的 `warnings` 是**非致命**提示，UI 会以「导入完成，另有 N 条提示」提醒（不影响工程载入）：
+
+| 警告码 | 含义 |
+| --- | --- |
+| `UNKNOWN_LIBPART` | 元件引用的 `lib:part` 不在 `libparts` 中，该元件没有引脚，不参与连通性 |
+| `UNKNOWN_SHEETPATH` | `comp.sheetpath` 不在 `design.sheets` 中，元件归入根图纸 |
+| `DUPLICATE_SHEET_PATH` / `DUPLICATE_LIBPART` / `DUPLICATE_COMP_REF` | 重复的图纸路径 / 库符号 / 位号，保留首个 |
+| `PIN_TYPE_MISMATCH` / `PIN_MODIFIER_CONFLICT` | 同一符号引脚在不同实例上的电气类型或 `no_connect`/`free` 标记不一致 |
+| `UNKNOWN_PIN_TYPE` | 引脚的电气类型不在 KiCad 12 种取值内，按 `passive` 处理 |
+| `NET_CLASS_CONFLICT` / `EMPTY_NET_NAME` / `MISSING_PIN_POINT` | 同名网络对应多个 class / 解码后网络名为空 / 节点找不到引脚位置，相关节点跳过 |
+| `SYMBOL_BUILD_FAILED` | 库符号构建失败，跳过该符号 |
+
+致命错误（不会载入工程，`ok: false` 并在对话框列出）来自解析与结构校验：`MISSING_EXPORT`（不是 S-表达式网表 / 缺少 `export` 根）、`INVALID_TOKEN`、`UNTERMINATED_STRING`、`UNTERMINATED_LIST`、`DEPTH_EXCEEDED`、`TRAILING_TOKEN`、`MISSING_VERSION`、`MISSING_SECTION`、`MISSING_SHEET`、`MISSING_COMP_REF`、`MISSING_PIN_NUM`、`MISSING_PIN_TYPE`、`MISSING_NET_NAME`、`MISSING_LIBPART_KEY`、`MISSING_LIBRARY_LOGICAL`、`MISSING_NODE_KEY`、`MISSING_PROPERTY_NAME`，以及工程校验失败的 `PROJECT_INVALID`。例如把 `examples/demo-led.json` 当网表导入，会得到一条：`第 1 行 [MISSING_EXPORT] 网表必须以 (export …) 列表开头`。
+
+## 9. 保存、打开与恢复
 
 - **保存**：`Ctrl+S`（或「文件 → 保存」）把工程写入浏览器本地草稿并下载 `.schproj.json` 文件。
 - **另存为**：`Ctrl+Shift+S` 输入新的工程名后保存。
@@ -133,7 +273,7 @@ node server.mjs
 - **恢复本地草稿**：「文件 → 恢复本地草稿」，读取浏览器中上次保存的内容。
 - **新建工程**：`Ctrl+N` 新建空白工程（未保存修改会先确认）。
 
-## 9. 快捷键
+## 10. 快捷键
 
 界面级快捷键（输入框聚焦时不拦截编辑类快捷键）：
 
@@ -167,22 +307,43 @@ node server.mjs
 | 滚轮 | 以光标为中心缩放 |
 | `L` / `R` / `H` / `1-4` | 封装工具：切图层 / 切形状 / 通孔 / 焊盘形状 |
 
-## 10. 示例工程
+## 11. 示例工程
 
 | 文件 | 内容 | 网表统计 |
 | --- | --- | --- |
 | `examples/demo-led.json` | VCC、R1 220R、D1 LED、GND；3 段导线；网络 VCC / N$1 / GND | 网络 3 · 引脚 6 · 元件 4 · 警告 0 |
 | `examples/demo-mcu.json` | MCU_16（U1）、C1/C2 100nF、Y1 8MHz、TP1/TP2 测试点；+5V/GND 电源、XTAL_IN/XTAL_OUT 全局标签、3 个结点、自定义 TP 符号与 HC-49S 封装 | 网络 16 · 引脚 26 · 元件 8 · 警告 10（未用引脚悬空，用于演示 ERC） |
+| `examples/tinytapeout-demo.net` | KiCad 9.0.8 实际导出的 TinyTapeout 示例网表：150 元件、2 张图纸（`/`、`/RP2040/`）、28 个库符号、9 种 net class、9 槽标题栏备注 | 网络 114 · 引脚节点 584（导入并生成网表后：网络 113 · 引脚 583 · 元件 150 · 警告 5） |
 
-两个示例都能通过 `deserializeProject` 的严格校验，可直接用「文件 → 打开示例」载入，也可用 `fetch('examples/demo-led.json')` 做自动化测试。
+前两个示例都能通过 `deserializeProject` 的严格校验，可直接用「文件 → 打开示例」载入，也可用 `fetch('examples/demo-led.json')` 做自动化测试。
 
-## 11. FAQ
+`tinytapeout-demo.net` 是 KiCad 网表（不是 `.schproj.json`），不能「打开工程」，要走「文件 → 导入 KiCad 网表…」；它也作为 KiCad 导出/导入往返测试的黄金样本（`test/integration/kicad-roundtrip.test.mjs`），文件被 `.gitattributes` 标记为 `-text` 以保留原始 CRLF 字节。
+
+## 12. FAQ
 
 **Q：为什么示例里是 `VCC` 网络而不是 `+5V`？**
 A：网络名来自电源符号的引脚名。`VCC` 符号的引脚名是 `VCC`，`+5V` 符号的引脚名才是 `+5V`。工程里要使用 `+5V` 网络，请从「元件库 → 电源与地」放置 `+5V` 符号（`examples/demo-mcu.json` 即如此）。
 
 **Q：生成网表后出现「悬空引脚」警告，需要处理吗？**
 A：未使用的引脚会出现 `FLOATING_PIN`；如果是有意保留，可忽略或后续接测试点/上拉电阻。示例 `demo-mcu` 故意保留这些引脚来演示 ERC。
+
+**Q：为什么导入后的元件是网格排列的，和 KiCad 里的位置不一样？**
+A：网表只描述「哪个元件的哪个引脚连到哪个网络」，不含坐标、旋转、图形与版面信息。导入器只能重建电气语义，于是按 2.54 mm 网格行优先摆放符号：本体宽 12.7 mm、每脚一段 2.54 mm 引出导线、导线末端放网络标签，每行最宽 420 mm，超出换行。需要原始版图请回到 KiCad 原理图；本工具不还原版面。
+
+**Q：为什么网络名里有 `{slash}`？**
+A：KiCad 网表把**标签文本**里的 `/` 转义成 `{slash}`，所以名为 `SDI/out0` 的网络在文件里写作 `SDI{slash}out0`。层级图纸路径不是标签文本，其中的 `/` 保持原样（如 `/CC1`、`/RP2040/DVDD`）。导入时会把 `{slash}` 解码回 `/` 供编辑，导出时再按同一规则编码；网表面板显示的是解码后的可读名。
+
+**Q：导入的 libparts 可以直接用来继续画图吗？**
+A：可以。每个 `libpart` 都会变成工程库里的一个符号（矩形本体 + 按顺序排列的引脚 + 引脚名/号 + Reference 前缀），可在「元件库 → 符号」里继续放置、连线、改属性并再次导出。但网表只有引脚名/号/电气类型，没有 KiCad 符号的图形细节（本体形状、引脚长度与摆放、多单元、装饰图形），所以所有导入符号都渲染成统一矩形——电气上等价，外观不等价。
+
+**Q：支持哪些 KiCad 网表版本？**
+A：面向 KiCad 9 的 `(export (version "E") …)`（该 S-表达式结构自 KiCad 6 起基本稳定，version D/C 的同类网表通常也能解析）。要求存在 `export` 根与 `version`，且 `design`/`components`/`nets` 齐全，缺项会以 `MISSING_SECTION` 等错误码拒绝导入；未知的额外子节点会被忽略。Protel(`[NETLIST]`)、CSV、JSON 等非 S-表达式网表不支持，会提示 `MISSING_EXPORT`。
+
+**Q：导入后网表面板是空的，导出网表也只有 `N$` 网络？**
+A：导入只重建工程数据，不会自动跑连通性分析；点一次「生成网表」即可，与打开普通工程的行为一致。另外源网表里 `unconnected-(…)` 记录的是「本来就悬空的引脚」，导入不重建它们的标签，所以会看到若干 `N$1`…`N$n` 单脚网络与对应的 `SINGLE_PIN_NET` 提示——这与源工程的电气状态一致（`examples/tinytapeout-demo.net` 即 5 条）。
+
+**Q：导入后的工程还能导出回 KiCad 网表吗？会不会丢东西？**
+A：能，「文件 → 导出网表… → KiCad 9 网表」。网络名、引脚集合、pintype/pinfunction、net class、多图纸与标题栏都会还原（见 8.3 的实测对比）；已知非语义损失有两处：坐标/图形（网表本身没有），以及元件 `tstamps` 的多值写法只保留第一个值（`tinytapeout-demo.net` 中 J4、U4 两行）。
 
 **Q：为什么保存后还要下载文件？**
 A：`Ctrl+S` 同时写浏览器本地草稿（用于「恢复本地草稿」）并下载 `.schproj.json` 作为可迁移的工程文件；浏览器清理站点数据后本地草稿会丢失。
