@@ -254,3 +254,157 @@ export function specialCharsProject() {
 export function emptyProject() {
   return attachSymbols(createProject('空工程'));
 }
+
+/**
+ * 富属性夹具：project.kicad / project.netClassAssignments / sheet.kicad / sheet.title.source /
+ * symbol.kicad / 库符号元数据 / KiCad 引脚类型与 noConnect、free 修饰齐备，
+ * 供 T3 导出器逐字段取数，也用于连通性契约测试。
+ */
+const RICH_SYMBOL = {
+  id: 'RICH',
+  name: '富属性符号',
+  refPrefix: 'U',
+  description: 'Rich attribute test symbol',
+  docs: 'https://example.com/docs',
+  footprints: ['Package_SO:SOT-23'],
+  keywords: 'rich test',
+  fpFilters: ['SOT-*'],
+  fields: [
+    { name: 'Reference', value: 'U' },
+    { name: 'Value', value: 'RICH' },
+    { name: 'Footprint' },
+    { name: 'Datasheet', value: '~' },
+    { name: 'Description', value: 'Rich attribute test symbol' },
+  ],
+  power: false,
+  pins: [
+    { id: 'RICH.1', name: 'SBU1', number: '1', x: -5.08, y: 0, length: 2.54, orientation: 'right', electricalType: 'bidirectional', noConnect: true },
+    { id: 'RICH.2', name: 'mio[36]/ctrl', number: '2', x: 5.08, y: 0, length: 2.54, orientation: 'left', electricalType: 'input', free: true },
+    { id: 'RICH.3', name: 'NC', number: '3', x: 0, y: -5.08, length: 2.54, orientation: 'up', electricalType: 'no_connect' },
+  ],
+  graphics: [{ type: 'rect', x: -2.54, y: -2.54, w: 5.08, h: 5.08, width: 0.254 }],
+};
+
+const RICH_SHEET_TSTAMPS = '/5384e408-8f0c-411c-b558-df35c2e889ec/';
+
+export function richAttributesProject() {
+  const project = createProject('富属性工程', {
+    kicad: {
+      source: 'C:\\workspace\\kicad\\demos\\tiny_tapeout\\tinytapeout-demo.kicad_sch',
+      tool: 'Eeschema 9.0.8',
+      date: '2026-11-19T10:25:58+0800',
+      version: 'E',
+      libraries: [
+        {
+          logical: 'TinyTapeout',
+          uri: 'C:\\workspace\\kicad\\tinytapeout-kicad-libs\\symbols\\TinyTapeout.kicad_sym',
+        },
+      ],
+    },
+    netClassAssignments: {
+      GND: 'pwr',
+      MID: 'ioout',
+      VCC: 'pwr',
+      SBU1: 'iobidir',
+      'mio[36]/ctrl': 'config',
+    },
+  });
+
+  const root = project.sheets[0];
+  root.kicad = { number: '1', name: '/', tstamps: '/' };
+  root.title.source = 'tinytapeout-demo.kicad_sch';
+  root.title.comments = [
+    'See LICENSE.txt for details',
+    'Licensed under Apache 2.0',
+    '(C) 2023 Pat Deegan',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+  ];
+  root.symbols.push(
+    createSymbolInstance({ symbolId: 'VCC', designator: '#PWR01', value: 'VCC', x: 0, y: 0 }),
+    createSymbolInstance({
+      symbolId: 'R',
+      designator: 'R1',
+      value: '10k',
+      x: 0,
+      y: 5.08,
+      rotation: 90,
+      footprintId: 'R_0805',
+      kicad: {
+        datasheet: '~',
+        description: 'Resistor, small symbol',
+        tstamps: '00db537f-1037-4fb6-9d9b-01d9f1f6a64d',
+        libsource: { lib: 'TinyTapeout', part: 'R_Small', description: 'Resistor, small symbol' },
+        properties: [
+          { name: 'MPN', value: 'RC0603FR-0710KL' },
+          { name: 'dnp' },
+          { name: 'JLC', value: '' },
+        ],
+        fields: [
+          { name: 'Footprint', value: 'R_0805' },
+          { name: 'Datasheet', value: '~' },
+          { name: 'Description', value: 'Resistor, small symbol' },
+        ],
+        sheetpath: { names: '/', tstamps: '/' },
+      },
+    }),
+    createSymbolInstance({ symbolId: 'R', designator: 'R2', value: '10k', x: 0, y: 15.24, rotation: 90, footprintId: 'R_0805' }),
+    createSymbolInstance({ symbolId: 'GND', designator: '#PWR02', value: 'GND', x: 0, y: 20.32 }),
+  );
+  root.labels.push(createLabel({ x: 0, y: 10.16, text: 'MID', kind: 'local' }));
+
+  const sub = createSheet('RP2040', {
+    index: 1,
+    kicad: { number: '2', name: '/RP2040/', tstamps: RICH_SHEET_TSTAMPS },
+    title: {
+      title: 'RP2040 Basic Support',
+      company: 'Psychogenic Technologies',
+      rev: '1.0.3',
+      date: '2023-11-22',
+      source: 'rp2040.kicad_sch',
+      comments: [
+        'See LICENSE.txt for details',
+        'Licensed under Apache 2.0',
+        '(C) 2023 Pat Deegan',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+      ],
+    },
+  });
+  project.sheets.push(sub);
+  sub.symbols.push(
+    createSymbolInstance({
+      symbolId: 'RICH',
+      designator: 'U1',
+      value: 'RICH',
+      x: 100,
+      y: 0,
+      kicad: {
+        datasheet: 'https://example.com/u1.pdf',
+        description: 'Rich attribute test symbol',
+        tstamps: 'f1a2b3c4-0000-4000-8000-000000000001',
+        libsource: { lib: 'TinyTapeout', part: 'RICH', description: 'Rich attribute test symbol' },
+        properties: [{ name: 'Sheetname', value: 'RP2040' }, { name: 'Sheetfile', value: 'rp2040.kicad_sch' }],
+        fields: [{ name: 'Footprint', value: 'Package_SO:SOT-23' }],
+        sheetpath: { names: '/RP2040/', tstamps: RICH_SHEET_TSTAMPS },
+      },
+    }),
+  );
+  sub.labels.push(
+    createLabel({ x: 94.92, y: 0, text: 'SBU1', kind: 'local' }),
+    createLabel({ x: 105.08, y: 0, text: 'mio[36]/ctrl', kind: 'local' }),
+  );
+
+  const symbols = symbolDefs();
+  symbols.push(JSON.parse(JSON.stringify(RICH_SYMBOL)));
+  project.library.symbols = symbols;
+  return project;
+}

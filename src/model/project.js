@@ -71,34 +71,45 @@ export function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-/** 创建一份完整工程。 */
-export function createProject(name = '未命名工程') {
+/** 创建一份完整工程；options 可带 KiCad 元数据（缺失时保持旧工程形状）。 */
+export function createProject(name = '未命名工程', options = {}) {
   const projectName = toText(name, '未命名工程').trim() || '未命名工程';
+  const source = isPlainObject(options) ? options : {};
   const timestamp = nowIso();
-  return {
+  const project = {
     schemaVersion: SCHEMA_VERSION,
     name: projectName,
     units: 'mm',
     grid: DEFAULT_GRID,
-    sheets: [createSheet('图纸 1')],
+    sheets: [createSheet('图纸 1', isPlainObject(source.sheet) ? source.sheet : {})],
     library: { symbols: [], footprints: [] },
     meta: { created: timestamp, modified: timestamp },
   };
+  const kicad = normalizeProjectKicad(source.kicad);
+  if (kicad !== undefined) project.kicad = kicad;
+  const assignments = normalizeNetClassAssignments(source.netClassAssignments);
+  if (assignments !== undefined) project.netClassAssignments = assignments;
+  return project;
 }
 
-/** 创建一张空图纸。 */
-export function createSheet(name = '图纸 1') {
+/** 创建一张空图纸；options 可带 KiCad 元数据与标题栏（缺失时保持旧工程形状）。 */
+export function createSheet(name = '图纸 1', options = {}) {
   const sheetName = toText(name, '图纸 1').trim() || '图纸 1';
-  return {
-    id: uid('sheet'),
+  const source = isPlainObject(options) ? options : {};
+  const raw = {
+    id: typeof source.id === 'string' && source.id.trim() !== '' ? source.id : uid('sheet'),
     name: sheetName,
     symbols: [],
     wires: [],
     junctions: [],
     labels: [],
     texts: [],
-    title: { title: sheetName, company: '', rev: '', date: todayIsoDate(), comments: '' },
+    title: isPlainObject(source.title)
+      ? { title: sheetName, company: '', rev: '', date: todayIsoDate(), comments: '', ...source.title }
+      : { title: sheetName, company: '', rev: '', date: todayIsoDate(), comments: '' },
   };
+  if (source.kicad !== undefined) raw.kicad = source.kicad;
+  return normalizeSheet(raw, Number.isInteger(source.index) ? source.index : 0);
 }
 
 /** 创建符号实例（未放置时坐标默认为 0）。 */
@@ -129,23 +140,107 @@ export function createText(partial = {}) {
   return normalizeText({ ...source, id: idOrUid(source.id, 'txt') });
 }
 
+/**
+ * 标题栏规范化：comments 双形态（string | string[]）原样保留，数组只做「不超过 9 槽 + 逐项字符串化」。
+ * 数组不自动补齐（补 9 槽是导出器的职责）；source 仅在提供时保留，避免改变旧工程形状。
+ */
 function normalizeTitle(raw, sheetName) {
   const source = isPlainObject(raw) ? raw : {};
   const comments = Array.isArray(source.comments)
-    ? source.comments.map((item) => toText(item, '')).join('\n')
+    ? source.comments
+        .slice(0, 9)
+        .map((item) => (item === undefined || item === null ? '' : String(item)))
     : toText(source.comments, '');
-  return {
+  const title = {
     title: toText(source.title, sheetName),
     company: toText(source.company, ''),
     rev: toText(source.rev, ''),
     date: toText(source.date, ''),
     comments,
   };
+  if (typeof source.source === 'string') title.source = source.source;
+  return title;
+}
+
+/** 规范化 project.kicad（§8.1）；非对象返回 undefined（保持旧工程形状）。 */
+function normalizeProjectKicad(raw) {
+  if (!isPlainObject(raw)) return undefined;
+  return {
+    source: toText(raw.source, ''),
+    tool: toText(raw.tool, 'schematic-studio'),
+    date: toText(raw.date, ''),
+    version: toText(raw.version, 'E'),
+    libraries: asArray(raw.libraries)
+      .filter(isPlainObject)
+      .map((library) => ({ logical: toText(library.logical, ''), uri: toText(library.uri, '') })),
+  };
+}
+
+/** 规范化 project.netClassAssignments（§8.2）：丢弃空网络名与非法 class 值。 */
+function normalizeNetClassAssignments(raw) {
+  if (!isPlainObject(raw)) return undefined;
+  const assignments = {};
+  for (const [netName, className] of Object.entries(raw)) {
+    if (netName === '' || typeof className !== 'string' || className.trim() === '') continue;
+    assignments[netName] = className;
+  }
+  return assignments;
+}
+
+/** 规范化 sheet.kicad（§8.3）；非对象返回 undefined。 */
+function normalizeSheetKicad(raw, index) {
+  if (!isPlainObject(raw)) return undefined;
+  return {
+    number: toText(raw.number, String(index + 1)),
+    name: toText(raw.name, '/'),
+    tstamps: toText(raw.tstamps, '/'),
+  };
+}
+
+/** 规范化 symbol.kicad 的 properties / fields 数组：保序，value 缺失与空串严格区分。 */
+function normalizeKicadEntries(raw) {
+  if (!Array.isArray(raw)) return undefined;
+  const entries = [];
+  for (const item of raw) {
+    if (!isPlainObject(item)) continue;
+    const entry = { name: toText(item.name, '') };
+    if (typeof item.value === 'string') entry.value = item.value;
+    entries.push(entry);
+  }
+  return entries;
+}
+
+/** 规范化 symbol.kicad（§8.4）；非对象返回 undefined。 */
+function normalizeSymbolKicad(raw) {
+  if (!isPlainObject(raw)) return undefined;
+  const kicad = {
+    datasheet: toText(raw.datasheet, ''),
+    description: toText(raw.description, ''),
+    tstamps: toText(raw.tstamps, ''),
+  };
+  if (isPlainObject(raw.libsource)) {
+    kicad.libsource = {
+      lib: toText(raw.libsource.lib, ''),
+      part: toText(raw.libsource.part, ''),
+      description: toText(raw.libsource.description, ''),
+    };
+  }
+  const properties = normalizeKicadEntries(raw.properties);
+  if (properties !== undefined) kicad.properties = properties;
+  const fields = normalizeKicadEntries(raw.fields);
+  if (fields !== undefined) kicad.fields = fields;
+  if (isPlainObject(raw.sheetpath)) {
+    kicad.sheetpath = {
+      names: toText(raw.sheetpath.names, ''),
+      tstamps: toText(raw.sheetpath.tstamps, ''),
+    };
+  }
+  return kicad;
 }
 
 function normalizeSymbolInstance(raw) {
   const source = isPlainObject(raw) ? raw : {};
-  return {
+  const symbol = {
     id: idOrUid(source.id, 'sym'),
     symbolId: toText(source.symbolId, ''),
     designator: toText(source.designator, 'U?'),
@@ -157,6 +252,9 @@ function normalizeSymbolInstance(raw) {
     footprintId: typeof source.footprintId === 'string' ? source.footprintId : null,
     fields: isPlainObject(source.fields) ? clone(source.fields) : {},
   };
+  const kicad = normalizeSymbolKicad(source.kicad);
+  if (kicad !== undefined) symbol.kicad = kicad;
+  return symbol;
 }
 
 function normalizeWire(raw) {
@@ -206,7 +304,7 @@ function normalizeSheet(raw, index) {
   const source = isPlainObject(raw) ? raw : {};
   const fallbackName = '图纸 ' + (index + 1);
   const name = toText(source.name, fallbackName).trim() || fallbackName;
-  return {
+  const sheet = {
     id: idOrUid(source.id, 'sheet'),
     name,
     symbols: asArray(source.symbols).filter(isPlainObject).map(normalizeSymbolInstance),
@@ -216,6 +314,9 @@ function normalizeSheet(raw, index) {
     texts: asArray(source.texts).filter(isPlainObject).map(normalizeText),
     title: normalizeTitle(source.title, name),
   };
+  const kicad = normalizeSheetKicad(source.kicad, index);
+  if (kicad !== undefined) sheet.kicad = kicad;
+  return sheet;
 }
 
 function normalizeLibrary(raw) {
@@ -254,6 +355,10 @@ export function normalizeProject(json) {
     library: normalizeLibrary(source.library),
     meta: normalizeMeta(source.meta),
   };
+  const kicad = normalizeProjectKicad(source.kicad);
+  if (kicad !== undefined) project.kicad = kicad;
+  const assignments = normalizeNetClassAssignments(source.netClassAssignments);
+  if (assignments !== undefined) project.netClassAssignments = assignments;
   if (project.sheets.length === 0) {
     project.sheets.push(createSheet('图纸 1'));
   }
