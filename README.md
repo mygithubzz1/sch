@@ -132,7 +132,7 @@ npm run verify:browser # headless Chrome 跑真实主流程（需本机 Chrome/E
 
 - 运行环境：Node.js 22+（使用内置 `node:test` 与 JSON 模块动态导入）；浏览器需现代 Chrome / Edge（支持 JSON 模块动态导入，约 123+）。旧版浏览器仍可启动编辑器，打开示例时会在对话框提示升级。
 - 默认只监听回环地址；需要在局域网访问时显式放开：`HOST=0.0.0.0 node server.mjs` 或 `node server.mjs --host 0.0.0.0`。以点开头的路径段（`.git`、`.agent-teams`、`.env` 等）一律返回 404。
-- 全部用例 `npm test` 全绿（本文档实测 496 个，随功能分支合并会继续增长）；纯逻辑层（core/model/library/netlist/render 的纯函数/io 序列化）不依赖 DOM，可直接在 Node 中测试。KiCad 网表另有「解析 → 重建 → 再导出」语义往返测试（`test/integration/kicad-roundtrip.test.mjs`：114 网络 / 584 节点 / net class 逐项比对，黄金样本再导出与源文件逐字节相同、二次往返为不动点）。
+- 全部用例 `npm test` 全绿（本文档实测 507 个，随功能分支合并会继续增长）；纯逻辑层（core/model/library/netlist/render 的纯函数/io 序列化）不依赖 DOM，可直接在 Node 中测试。KiCad 网表另有「解析 → 重建 → 再导出」语义往返测试（`test/integration/kicad-roundtrip.test.mjs`：114 网络 / 584 节点 / net class 逐项比对，黄金样本再导出与源文件逐字节相同、二次往返为不动点）。
 - 服务器冒烟：`npm run smoke` 通过 **94/94** 项资源检查（含首页、样式、全部 `src/` 模块、示例 JSON 与网表夹具）。
 - 浏览器主流程：`npm run verify:browser` 通过 **12/12**（示例加载、网表、SVG/KiCad/CSV 导出、放置/连线/junction、改位号值封装、撤销、封装焊盘），控制台 0 错误；完整证据见 **[docs/FINAL_CHECKLIST.md](docs/FINAL_CHECKLIST.md)**。
 
