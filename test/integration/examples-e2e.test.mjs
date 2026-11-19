@@ -148,8 +148,9 @@ test('KiCad 网表为配平的 S-表达式并含 export/nets 段', () => {
   const text = EXPORTERS.kicad.generate(project);
   assert.ok(text.startsWith('(export'), 'KiCad 网表应以 (export 开头');
   assert.ok(text.includes('(nets'));
-  assert.ok(text.includes('(net (code 1) (name "GND")'));
-  assert.ok(text.includes('(comp (ref "R1") (value "220R")'));
+  assert.ok(text.includes('(net (code "1") (name "GND") (class "Default")'));
+  assert.ok(text.includes('(comp (ref "R1")'));
+  assert.ok(text.includes('(value "220R")'));
   assert.ok(text.includes('(source "LED 指示灯")'));
   assert.equal(parenDepth(text), 0, 'S-表达式括号必须配平');
 });
