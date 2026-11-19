@@ -130,8 +130,8 @@ node server.mjs
 | --- | --- |
 | `export` | 根节点，`version` 固定为 `"E"`（KiCad 9 的网表版本号就是 `E`） |
 | `design` | `source`（源 `.kicad_sch` 绝对路径）、`date`（带时区的时间戳）、`tool`；每张图纸一个 `sheet`：`number` / `name`（KiCad 图纸路径，如 `/`、`/RP2040/`）/ `tstamps`，以及 `title_block`（`title`、`company`、`rev`、`date`、`source` 与 `comment 1…9`，9 个槽位固定输出，空槽写作 `(comment (number "4") (value ""))`） |
-| `components` | 每个元件一个 `comp`：`ref`、`value`、`footprint`、`datasheet`、`fields`（Reference / Value / Footprint / Datasheet / Description 五个标准字段）、`libsource`（`lib` + `part`）、`property`（`Sheetname`、`Sheetfile` 等工程属性）、`sheetpath`（`names` + `tstamps`）与 `tstamps` |
-| `libparts` | 每个用到的库符号一个 `libpart`：`lib`、`part`、`description`、`docs`、`footprints`、`fields` 与 `pins`（`pin` 的 `num`、`name`、`type`）；没有引脚的符号（如基准点 `Fiducial`）不输出 `pins` 块 |
+| `components` | 每个元件一个 `comp`：`ref`、`value`、`footprint`、`datasheet`、`fields`（元件属性字段，如 `MPN`、`Footprint`、`Datasheet`、`Description`）、`libsource`（`lib` + `part`）、`property`（`Sheetname`、`Sheetfile`、`ki_keywords`、`ki_fp_filters` 等）、`sheetpath`（`names` + `tstamps`）与 `tstamps` |
+| `libparts` | 每个用到的库符号一个 `libpart`：`lib`、`part`、`description`、`docs`、`footprints`、`fields`（Reference / Value / Footprint / Datasheet / Description 五个标准字段）与 `pins`（`pin` 的 `num`、`name`、`type`）；没有引脚的符号（如基准点 `Fiducial`）不输出 `pins` 块 |
 | `libraries` | 每个库一个 `library`：`logical`（库名）与 `uri`（库文件路径） |
 | `nets` | 每个网络一个 `net`：`code`（从 1 连续编号）、`name`、`class`，下面是若干 `node`：`ref` + `pin`，可选 `pinfunction`（引脚名原文，为空时整段省略），以及 `pintype`（`passive`、`input`、`bidirectional` 等基础类型，可带 `+no_connect` / `+free` 修饰，如 `bidirectional+no_connect`、裸 `no_connect`） |
 
