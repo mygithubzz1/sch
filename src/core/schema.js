@@ -160,13 +160,24 @@ function validateKicadEntries(errors, entries, path) {
   });
 }
 
+/** 校验 tstamps 双形态：string | string[]（每项字符串）；缺失放行（§8.4 兼容扩展）。 */
+function optionalStringOrStringList(errors, value, path) {
+  if (value === undefined) return;
+  if (typeof value === 'string') return;
+  if (!Array.isArray(value)) {
+    push(errors, path, '期望字符串或字符串数组，实际为' + describe(value));
+    return;
+  }
+  value.forEach((item, index) => requireString(errors, item, path + '[' + index + ']'));
+}
+
 /** 校验 symbol.kicad（§8.4）。 */
 function validateSymbolKicad(errors, kicad, path) {
   if (kicad === undefined) return;
   if (!requireObject(errors, kicad, path)) return;
   optionalString(errors, kicad.datasheet, path + '.datasheet');
   optionalString(errors, kicad.description, path + '.description');
-  optionalString(errors, kicad.tstamps, path + '.tstamps');
+  optionalStringOrStringList(errors, kicad.tstamps, path + '.tstamps');
   if (kicad.libsource !== undefined) {
     const libsourcePath = path + '.libsource';
     if (requireObject(errors, kicad.libsource, libsourcePath)) {

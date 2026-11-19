@@ -8,7 +8,7 @@
 //   version: "E",
 //   design: { source, date, tool, sheets: [{ number, name, tstamps, titleBlock }] },
 //   components: [{ ref, value, footprint, datasheet?, description?, fields, libsource,
-//                  properties, sheetpath, tstamps }],
+//                  properties, sheetpath, tstamps: string | string[] }],
 //   libparts: [{ lib, part, description, docs?, footprints, fields, pins }],
 //   libraries: [{ logical, uri }],
 //   nets: [{ code, name, class, nodes: [{ ref, pin, pinfunction?, pintype }] }]
@@ -61,6 +61,21 @@ function childText(node, name, fallback = undefined) {
   const child = firstChild(node, name);
   if (!child) return fallback;
   return typeof child[1] === 'string' ? child[1] : '';
+}
+
+/**
+ * 读取 `(name "a" "b" …)` 形态子节点的全部字符串取值（§3.3.4：KiCad 9 的 comp/tstamps 可多值）。
+ * 单值返回字符串（与 childText 行为一致），多值返回按原始顺序的数组，绝不只取首个。
+ */
+function listTexts(node, name, fallback = undefined) {
+  const child = firstChild(node, name);
+  if (!child) return fallback;
+  const values = [];
+  for (let index = 1; index < child.length; index += 1) {
+    if (typeof child[index] === 'string') values.push(child[index]);
+  }
+  if (values.length === 0) return '';
+  return values.length === 1 ? values[0] : values;
 }
 
 /** 读取 `(field (name "X") "value")` 里紧跟在结构名之后的位置参数字符串。 */
@@ -328,7 +343,7 @@ function readComponent(node, errors, warnings) {
     libsource: readLibsource(node),
     properties: readProperties(node, errors),
     sheetpath: readSheetPath(node),
-    tstamps: childText(node, 'tstamps', ''),
+    tstamps: listTexts(node, 'tstamps', ''),
   };
   const datasheet = childText(node, 'datasheet', undefined);
   if (datasheet !== undefined) component.datasheet = datasheet;

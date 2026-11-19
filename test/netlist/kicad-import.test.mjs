@@ -533,3 +533,23 @@ test('空网表段（无 components / nets）也能导入为 1 张空图纸工�
   assert.equal(result.project.sheets[0].symbols.length, 0);
   assert.equal(result.project.sheets[0].kicad.name, '/');
 });
+
+test('comp 多值 tstamps：导入保留完整数组，实例 id 取首值，buildNetlist 透传', () => {
+  const project = importedProject();
+  const j4 = symbolOf(project, 'J4');
+  assert.deepEqual(j4.kicad.tstamps, [
+    '4c9d5f26-ed78-4f01-a96d-6cb9799c635a',
+    'd330ac86-79a4-43c5-9c0a-69cac1356867',
+    '342c76f3-b2b8-40b2-a0b0-d83e480188cc',
+  ]);
+  assert.equal(j4.id, 'sym-4c9d5f26-ed78-4f01-a96d-6cb9799c635a', '实例 id 用首个 tstamps 派生并保持稳定');
+
+  const u4 = symbolOf(project, 'U4');
+  assert.equal(u4.kicad.tstamps.length, 5);
+  assert.equal(u4.id, 'sym-71933cd7-333f-4442-aab4-3820c85802bb');
+
+  const netlist = buildNetlist(project);
+  assert.deepEqual(netlist.components.find((component) => component.designator === 'J4').kicad.tstamps, j4.kicad.tstamps);
+  assert.deepEqual(netlist.components.find((component) => component.designator === 'U4').kicad.tstamps, u4.kicad.tstamps);
+  assert.equal(symbolOf(project, 'C1').kicad.tstamps, '00db537f-1037-4fb6-9d9b-01d9f1f6a64d', '单值元件保持字符串');
+});

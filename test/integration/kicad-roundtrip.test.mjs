@@ -9,6 +9,7 @@
 // - 二次往返是不动点（导出 → 再导入 → 再导出 字节稳定），证明重建过程无信息漂移。
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -238,4 +239,55 @@ test('二次往返是不动点（导入 → 导出 → 导入 → 导出 字节�
   assert.equal(reimported.ok, true, '再导出的网表应可再次导入：' + (reimported.errors || []).join('；'));
   assert.equal(reimported.warnings.length, 0, '二次导入不应产生告警：' + JSON.stringify(reimported.warnings));
   assert.equal(generateKiCad(reimported.project), generated, '二次导出应与首次导出逐字节相同');
+});
+
+function sha256(buffer) {
+  return crypto.createHash('sha256').update(buffer).digest('hex');
+}
+
+test('黄金样本逐字节还原：导入 → 导出与源文件完全相同（254285 字节 / SHA256 2f92e581…a53f）', () => {
+  const { generated } = roundtrip();
+  const sourceBuffer = fs.readFileSync(FIXTURE);
+  const generatedBuffer = Buffer.from(generated, 'utf8');
+
+  assert.equal(sourceBuffer.length, 254285, '黄金样本应为 254285 字节');
+  assert.equal(generatedBuffer.length, 254285, '导出字节数必须与源文件相同');
+  assert.equal(generatedBuffer.length, sourceBuffer.length, '长度必须逐字节一致');
+  assert.equal(sha256(sourceBuffer), '2f92e581a7b7451307f6536d9858e42351d2378cdc22b3dfb9ab19e4e831a53f');
+  assert.equal(sha256(generatedBuffer), sha256(sourceBuffer), 'SHA256 必须与源文件完全相同');
+  assert.equal(generatedBuffer.equals(sourceBuffer), true, '导出内容必须与源文件逐字节相同');
+
+  assert.equal(generated.split('\r\n').length, 4680, '应为 4680 行');
+  assert.equal((generated.match(/\r\n/g) || []).length, 4679, '应为 4679 个 CRLF 行尾');
+  assert.equal((generated.match(/(?<!\r)\n/g) || []).length, 0, '不得出现裸 LF');
+  assert.equal(/[\r\n]$/.test(generated), false, '末尾不得有换行');
+  assert.equal(generated.charCodeAt(0) === 0xfeff, false, '不得带 BOM');
+});
+
+test('多值 comp tstamps 在导入工程与导出文本中完整保留（J4 3 个 / U4 5 个）', () => {
+  const { imported, generated } = roundtrip();
+  const symbols = imported.project.sheets.flatMap((sheet) => sheet.symbols);
+  const byRef = new Map(symbols.map((symbol) => [symbol.designator, symbol]));
+
+  assert.deepEqual(byRef.get('J4').kicad.tstamps, [
+    '4c9d5f26-ed78-4f01-a96d-6cb9799c635a',
+    'd330ac86-79a4-43c5-9c0a-69cac1356867',
+    '342c76f3-b2b8-40b2-a0b0-d83e480188cc',
+  ]);
+  assert.equal(byRef.get('U4').kicad.tstamps.length, 5);
+  assert.equal(typeof byRef.get('C1').kicad.tstamps, 'string', '单值元件保持字符串形态');
+
+  assert.ok(
+    generated.includes(
+      '(tstamps "4c9d5f26-ed78-4f01-a96d-6cb9799c635a" "d330ac86-79a4-43c5-9c0a-69cac1356867" "342c76f3-b2b8-40b2-a0b0-d83e480188cc")',
+    ),
+    'J4 的 3 个 tstamps 必须原样输出',
+  );
+  const u4Line = generated.split('\r\n').find((line) => line.trimStart().startsWith('(tstamps "71933cd7'));
+  assert.equal(
+    u4Line.trim(),
+    // tstamps 是 comp 的最后一个子节点：按 §2.3 R4，行尾多一个闭括号属于 comp。
+    '(tstamps "71933cd7-333f-4442-aab4-3820c85802bb" "ef8c3c98-ea16-47a2-aa94-e8f9234624b4" "e919256b-c5bd-4d79-b39d-e69d1ddba8a8" "f2cd6ad8-250f-4db7-93a7-df84ad0b6adf" "4ef3ed4e-bc9a-4001-a514-469079376569"))',
+    'U4 的 5 个 tstamps 必须按原顺序原样输出',
+  );
 });

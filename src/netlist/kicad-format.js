@@ -54,13 +54,15 @@ function quote(value) {
 
 /**
  * 构造 S-表达式节点（排版模型的唯一入口）。
- * 节点形如 { name, inline: [[key, value]...], value, children: [...] }：
+ * 节点形如 { name, inline: [[key, value]...], value, values, children: [...] }：
  * - inline：与结构名同处头行的叶列表，如 (comp (ref "C1")、(net (code "1") (name "x") (class "pwr")
- * - value：紧跟结构名的裸字符串，如 (field (name "MPN") "…)；undefined 表示省略该 token
+ * - value：紧跟结构名的单个裸字符串，如 (field (name "MPN") "…)；undefined 表示省略该 token
+ * - values：紧跟结构名的多个裸字符串（如 (tstamps "a" "b" "c")）；非空时优先于 value
  * - children：各占一行的结构子元素
  * @param {string} name 结构名（atom）
- * @param {{ inline?: Array<[string, *]>, value?: *, children?: object[] }} options 选项
- * @returns {{ name: string, inline: Array<[string, string]>, value: (string|undefined), children: object[] }}
+ * @param {{ inline?: Array<[string, *]>, value?: *, values?: Array<*>, children?: object[] }} options 选项
+ * @returns {{ name: string, inline: Array<[string, string]>, value: (string|undefined),
+ *             values: string[], children: object[] }}
  */
 export function sexpr(name, options = {}) {
   const source = options && typeof options === 'object' ? options : {};
@@ -69,14 +71,21 @@ export function sexpr(name, options = {}) {
     : [];
   const children = Array.isArray(source.children) ? source.children.filter(Boolean) : [];
   const value = source.value === undefined || source.value === null ? undefined : String(source.value);
-  return { name: String(name), inline, value, children };
+  const values = Array.isArray(source.values)
+    ? source.values.map((item) => (item === undefined || item === null ? '' : String(item)))
+    : [];
+  return { name: String(name), inline, value, values, children };
 }
 
 function renderNode(node, depth, lines) {
   const indent = '  '.repeat(depth);
   let head = indent + '(' + node.name;
   for (const [key, value] of node.inline) head += ' (' + key + ' ' + quote(value) + ')';
-  if (node.value !== undefined) head += ' ' + quote(node.value);
+  if (Array.isArray(node.values) && node.values.length > 0) {
+    for (const value of node.values) head += ' ' + quote(value);
+  } else if (node.value !== undefined) {
+    head += ' ' + quote(node.value);
+  }
   if (node.children.length === 0) {
     lines.push(head + ')');
     return;

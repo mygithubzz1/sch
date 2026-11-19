@@ -400,15 +400,17 @@ export function importKiCadNetlist(text, options = {}) {
       if (!def) {
         warn(warnings, 'UNKNOWN_LIBPART', '元件 ' + ref + ' 的符号 ' + key + ' 未在 libparts 中定义，引脚不参与连通性');
       }
-      const tstamps = toText(component.tstamps, '');
-      let instanceId = 'sym-' + (tstamps === '' ? sheet.id + '-' + ref : tstamps);
+      // comp/tstamps 可能是多值（§3.3.4）：实例 id 只用首个值作种子，完整数组原样写回 symbol.kicad。
+      const rawTstamps = component.tstamps === undefined ? '' : component.tstamps;
+      const tstampsSeed = Array.isArray(rawTstamps) ? toText(rawTstamps[0], '') : toText(rawTstamps, '');
+      let instanceId = 'sym-' + (tstampsSeed === '' ? sheet.id + '-' + ref : tstampsSeed);
       if (usedInstanceIds.has(instanceId)) instanceId = instanceId + '-' + (index + 1);
       usedInstanceIds.add(instanceId);
       const position = positions[index];
       const kicad = {
         datasheet: toText(component.datasheet, ''),
         description: toText(component.description, ''),
-        tstamps,
+        tstamps: rawTstamps,
         libsource: {
           lib: toText(component.libsource.lib, ''),
           part: toText(component.libsource.part, ''),

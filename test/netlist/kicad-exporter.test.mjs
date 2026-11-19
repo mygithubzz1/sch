@@ -991,3 +991,41 @@ test('黄金样本同构：design / comp / libpart / libraries 块与 net 节点
   const goldenNetBlock = block(goldenText, /^ {4}\(net \(code "65"\) \(name "SDI\{slash\}out0"\)/);
   assert.deepEqual(nodeLines(generatedNet), nodeLines(goldenNetBlock), 'net 节点行必须逐字节一致');
 });
+
+test('comp/tstamps：多值按原顺序逐个输出，单值行为不变，空数组回落稳定 UUID', () => {
+  const project = createProject('tstamps');
+  const sheet = project.sheets[0];
+  sheet.symbols.push(
+    createSymbolInstance({
+      id: 'sym-r1',
+      symbolId: 'R',
+      designator: 'R1',
+      x: 0,
+      y: 0,
+      kicad: { tstamps: ['aaa', 'bbb', 'ccc'] },
+    }),
+  );
+  sheet.symbols.push(
+    createSymbolInstance({ id: 'sym-r2', symbolId: 'R', designator: 'R2', x: 0, y: 20, kicad: { tstamps: 'only' } }),
+  );
+  sheet.symbols.push(
+    createSymbolInstance({ id: 'sym-r3', symbolId: 'R', designator: 'R3', x: 0, y: 40, kicad: { tstamps: [] } }),
+  );
+
+  const generated = generateKiCad(project);
+  const root = parseExport(generated);
+  assert.deepEqual(
+    directStrings(childNamed(compByRef(root, 'R1'), 'tstamps')),
+    ['aaa', 'bbb', 'ccc'],
+    '多值 tstamps 必须按原顺序逐个输出',
+  );
+  assert.deepEqual(directStrings(childNamed(compByRef(root, 'R2'), 'tstamps')), ['only'], '单值输出与旧行为一致');
+  const fallback = directStrings(childNamed(compByRef(root, 'R3'), 'tstamps'));
+  assert.equal(fallback.length, 1, '空数组回落为单个稳定 UUID');
+  assert.match(fallback[0], /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+
+  const tstampsLines = generated.split('\r\n').filter((line) => line.includes('(tstamps "aaa"'));
+  assert.equal(tstampsLines.length, 1, '多值 tstamps 必须独占一行');
+  // tstamps 是 comp 的最后一个子节点，按 §2.3 R4 其闭括号与 comp 的闭括号并入同一行。
+  assert.equal(tstampsLines[0].trim(), '(tstamps "aaa" "bbb" "ccc"))', '多值之间以一个空格分隔');
+});

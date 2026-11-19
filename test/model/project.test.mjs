@@ -1,6 +1,7 @@
 // 工程数据模型测试：工厂缺省值、克隆、JSON 往返、规范化与查找。
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { validateProject } from '../../src/core/schema.js';
 import {
   DEFAULT_GRID,
   DEFAULT_TEXT_SIZE,
@@ -327,4 +328,60 @@ test('findSheetById / findEntityById / findEntityWithKind', () => {
   assert.deepEqual(findEntityWithKind(sheet, wire.id), { kind: 'wires', entity: wire });
   assert.equal(findEntityWithKind(sheet, ''), null);
   assert.equal(findEntityWithKind(null, 'x'), null);
+});
+
+test('symbol.kicad.tstamps 支持 string | string[] 双形态：规范化保序不压平，schema 校验两种形态', () => {
+  const project = createProject('tstamps');
+  const sheet = project.sheets[0];
+  sheet.symbols.push(
+    createSymbolInstance({
+      id: 'sym-multi',
+      symbolId: 'R',
+      designator: 'R1',
+      kicad: { tstamps: ['a', 'b', 'c'] },
+    }),
+  );
+  sheet.symbols.push(
+    createSymbolInstance({
+      id: 'sym-single',
+      symbolId: 'R',
+      designator: 'R2',
+      kicad: { tstamps: 'single' },
+    }),
+  );
+  sheet.symbols.push(createSymbolInstance({ id: 'sym-none', symbolId: 'R', designator: 'R3' }));
+
+  const normalized = normalizeProject(project);
+  const symbols = normalized.sheets[0].symbols;
+  assert.deepEqual(symbols[0].kicad.tstamps, ['a', 'b', 'c'], '数组必须保序，不得压平');
+  assert.equal(symbols[1].kicad.tstamps, 'single', '单值字符串行为不变');
+  assert.equal(symbols[2].kicad, undefined, '缺失 kicad 时保持旧工程形状');
+
+  // JSON 往返与二次规范化都不丢形态。
+  const roundTrip = normalizeProject(JSON.parse(JSON.stringify(normalized)));
+  assert.deepEqual(roundTrip.sheets[0].symbols[0].kicad.tstamps, ['a', 'b', 'c']);
+  assert.equal(roundTrip.sheets[0].symbols[1].kicad.tstamps, 'single');
+
+  const valid = validateProject(normalized);
+  assert.equal(valid.ok, true, '两种形态都应通过校验：' + JSON.stringify(valid.errors));
+
+  const invalidScalar = JSON.parse(JSON.stringify(normalized));
+  invalidScalar.sheets[0].symbols[0].kicad.tstamps = 42;
+  const scalarResult = validateProject(invalidScalar);
+  assert.equal(scalarResult.ok, false);
+  assert.ok(
+    scalarResult.errors.some(
+      (error) => error.includes('symbols[0].kicad.tstamps') && error.includes('期望字符串或字符串数组'),
+    ),
+    '非法标量应报带路径的错误：' + JSON.stringify(scalarResult.errors),
+  );
+
+  const invalidItem = JSON.parse(JSON.stringify(normalized));
+  invalidItem.sheets[0].symbols[0].kicad.tstamps = ['a', 42];
+  const itemResult = validateProject(invalidItem);
+  assert.equal(itemResult.ok, false);
+  assert.ok(
+    itemResult.errors.some((error) => error.includes('kicad.tstamps[1]') && error.includes('期望字符串')),
+    '数组元素类型错误应带下标路径：' + JSON.stringify(itemResult.errors),
+  );
 });
