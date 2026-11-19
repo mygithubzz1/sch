@@ -93,7 +93,7 @@ git commit -m "feat(scope): …"
 feat(netlist): 实现 KiCad 9 (version E) 完整网表导出器
 
 按 docs/NETLIST_KICAD.md 输出六分节 …
-验证：node --test test/netlist 全绿；黄金样本语义往返 8/8
+验证：node --test "test/netlist/**/*.test.mjs" 全绿；黄金样本往返用例 8/8
 ```
 
 ---
@@ -131,7 +131,7 @@ npm test                       # 合并后再跑一次全量
 - **只用 `--no-ff`**：保留功能分支的边界，`git log --graph` 能看出批次。
 - 合并前先看 `git log --oneline dev..<branch>` 与 `git diff --stat dev...<branch>`，确认改动范围符合任务边界。
 - 合并后立刻校验不可再生的夹具（见 §6），再清理 worktree 与已合并分支。
-- 一次合并失败（冲突）时：**在功能分支一侧**解决（`git checkout <branch>` 在它的 worktree 里 rebase 是被禁止的，应改为在功能分支上 `git merge dev` 后解决，或由集成方在 `dev` 上手工合并），禁止 `git reset --hard` 回滚已合并内容。
+- 一次合并失败（冲突）时：**不要 rebase、不要 reset**。两种可行做法——由集成方在 `dev` 上手工解决冲突后继续 `--no-ff` 合并；或在功能分支的 worktree 里 `git merge dev` 解决冲突并提交，再请集成方合并。无论哪种，解决后必须重跑 `npm test`。
 
 ### 5.1 冲突处理
 
