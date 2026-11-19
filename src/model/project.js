@@ -210,13 +210,24 @@ function normalizeKicadEntries(raw) {
   return entries;
 }
 
+/**
+ * 规范化 symbol.kicad.tstamps（§8.4 兼容扩展）：string | string[] 双形态。
+ * 数组保持数组（保序、逐项字符串化），绝不压平；旧工程的字符串或缺失行为不变。
+ */
+function normalizeKicadTstamps(raw) {
+  if (Array.isArray(raw)) {
+    return raw.map((item) => (item === undefined || item === null ? '' : String(item)));
+  }
+  return toText(raw, '');
+}
+
 /** 规范化 symbol.kicad（§8.4）；非对象返回 undefined。 */
 function normalizeSymbolKicad(raw) {
   if (!isPlainObject(raw)) return undefined;
   const kicad = {
     datasheet: toText(raw.datasheet, ''),
     description: toText(raw.description, ''),
-    tstamps: toText(raw.tstamps, ''),
+    tstamps: normalizeKicadTstamps(raw.tstamps),
   };
   if (isPlainObject(raw.libsource)) {
     kicad.libsource = {

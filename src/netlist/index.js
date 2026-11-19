@@ -397,10 +397,21 @@ function componentPropertiesOf(component, instance, sheet) {
   return properties;
 }
 
+/**
+ * comp/tstamps（§3.3.4 兼容扩展）：kicad.tstamps 支持 string | string[]。
+ * 多值按原始顺序逐个输出；单值输出与旧行为一致；缺失（或空数组）时用稳定 UUID 兜底。
+ * @returns {string[]} 至少一个值
+ */
 function componentTstampsOf(component, kicad) {
-  const explicit = asText(kicad && kicad.tstamps);
-  if (explicit !== '') return explicit;
-  return stableUuid(asText(component.instanceId) || asText(component.designator) || 'comp');
+  const explicit = kicad ? kicad.tstamps : undefined;
+  if (Array.isArray(explicit)) {
+    const values = explicit.map((item) => asText(item)).filter((item) => item !== '');
+    if (values.length > 0) return values;
+  } else {
+    const text = asText(explicit);
+    if (text !== '') return [text];
+  }
+  return [stableUuid(asText(component.instanceId) || asText(component.designator) || 'comp')];
 }
 
 function componentNode(component, context) {
@@ -437,7 +448,7 @@ function componentNode(component, context) {
   const names = asText(sheetpath && sheetpath.names) || sheetKicad.name;
   const tstamps = asText(sheetpath && sheetpath.tstamps) || sheetKicad.tstamps;
   children.push(sexpr('sheetpath', { inline: [['names', names], ['tstamps', tstamps]] }));
-  children.push(sexpr('tstamps', { value: componentTstampsOf(component, kicad) }));
+  children.push(sexpr('tstamps', { values: componentTstampsOf(component, kicad) }));
 
   return sexpr('comp', {
     inline: [['ref', asText(component.designator)]],

@@ -353,3 +353,52 @@ test('缺 libparts/libraries 段时只告警，不阻断解析', () => {
     ['MISSING_LIBPARTS', 'MISSING_LIBRARIES'],
   );
 });
+
+test('黄金样本：comp/tstamps 多值完整保留（J4 3 个、U4 5 个），单值仍为字符串', () => {
+  const doc = readKiCadNetlist(SAMPLE);
+  const byRef = new Map(doc.components.map((component) => [component.ref, component]));
+
+  assert.equal(byRef.get('C1').tstamps, '00db537f-1037-4fb6-9d9b-01d9f1f6a64d', '单值 comp 仍返回字符串');
+  assert.deepEqual(
+    byRef.get('J4').tstamps,
+    [
+      '4c9d5f26-ed78-4f01-a96d-6cb9799c635a',
+      'd330ac86-79a4-43c5-9c0a-69cac1356867',
+      '342c76f3-b2b8-40b2-a0b0-d83e480188cc',
+    ],
+    'J4 的 3 个 tstamps 必须按原顺序完整保留',
+  );
+  assert.deepEqual(
+    byRef.get('U4').tstamps,
+    [
+      '71933cd7-333f-4442-aab4-3820c85802bb',
+      'ef8c3c98-ea16-47a2-aa94-e8f9234624b4',
+      'e919256b-c5bd-4d79-b39d-e69d1ddba8a8',
+      'f2cd6ad8-250f-4db7-93a7-df84ad0b6adf',
+      '4ef3ed4e-bc9a-4001-a514-469079376569',
+    ],
+    'U4 的 5 个 tstamps 必须按原顺序完整保留',
+  );
+  assert.equal(doc.components.filter((component) => Array.isArray(component.tstamps)).length, 2, '仅 J4/U4 为多值');
+  assert.equal(
+    doc.components.filter((component) => typeof component.tstamps === 'string').length,
+    148,
+    '其余 148 个元件保持单值字符串',
+  );
+});
+
+test('comp/tstamps 多值也能在自建网表中解析并保持原始引号内容', () => {
+  const doc = readKiCadNetlist(
+    [
+      '(export (version "E") (design (sheet (number "1") (name "/") (tstamps "/")))',
+      '  (components',
+      '    (comp (ref "J1") (value "x") (footprint "")',
+      '      (fields (field (name "Value") "x")) (libsource (lib "L") (part "P") (description "p"))',
+      '      (sheetpath (names "/") (tstamps "/"))',
+      '      (tstamps "uuid-1" "uuid-2" "uuid-3")))',
+      '  (nets))',
+    ].join('\r\n'),
+  );
+  assert.equal(doc.ok, true, JSON.stringify(doc.errors));
+  assert.deepEqual(doc.components[0].tstamps, ['uuid-1', 'uuid-2', 'uuid-3']);
+});
