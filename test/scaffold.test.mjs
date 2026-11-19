@@ -186,7 +186,9 @@ test('默认只监听回环地址，显式请求才放开', async () => {
   assert.equal(resolveHost({}, [], { HOST: '10.0.0.2' }), '10.0.0.2');
   assert.equal(resolveHost({}, [], {}), DEFAULT_HOST);
 
-  const server = startServer({ port: 0, rootDir: ROOT });
+  // quiet: true 关闭启动日志：测试进程的 stdout 只应包含 node:test 的结果帧，
+  // 否则 startServer 的 console.log 会污染帧通道并触发 "Unable to deserialize cloned data"。
+  const server = startServer({ port: 0, rootDir: ROOT, quiet: true });
   await new Promise((resolve, reject) => {
     server.once('listening', resolve);
     server.once('error', reject);
