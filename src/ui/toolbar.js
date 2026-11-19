@@ -2,13 +2,14 @@
 import { el, clear } from './dom.js';
 import { iconNode } from './icons.js';
 
-const MENU_DEFINITIONS = Object.freeze([
+export const MENU_DEFINITIONS = Object.freeze([
   {
     id: 'file',
     label: '文件',
     items: [
       { id: 'newProject', label: '新建工程', shortcut: 'Ctrl+N' },
       { id: 'openProject', label: '打开工程…', shortcut: 'Ctrl+O' },
+      { id: 'importNetlist', label: '导入 KiCad 网表…' },
       { id: 'openExampleLed', label: '打开示例：LED 指示灯' },
       { id: 'openExampleMcu', label: '打开示例：MCU 最小系统' },
       { id: 'saveProject', label: '保存', shortcut: 'Ctrl+S' },

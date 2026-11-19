@@ -10,6 +10,7 @@ export function buildToolbarActions(ctx) {
   return {
     newProject: () => { void ctx.newProject(); },
     openProject: () => ctx.openProject(),
+    importNetlist: () => ctx.openNetlistImport(),
     openExampleLed: () => { void ctx.openExample('led'); },
     openExampleMcu: () => { void ctx.openExample('mcu'); },
     saveProject: () => ctx.saveProject(),

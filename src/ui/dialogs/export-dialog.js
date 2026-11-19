@@ -6,6 +6,11 @@ import { exportFileName } from '../project-setup.js';
 import { netlistSummary } from '../view-model.js';
 import { openModal } from './modal.js';
 
+/** KiCad 格式的版本说明（format E 即 KiCad 9 网表格式）。 */
+export const FORMAT_NOTES = Object.freeze({
+  kicad: 'KiCad 9 (version E)',
+});
+
 function messageOf(error) {
   return error && typeof error.message === 'string' ? error.message : String(error);
 }
@@ -61,6 +66,7 @@ export function openExportDialog(config = {}) {
   });
   const fileLabel = el('span', { class: 'export-filename' });
   const formatGrid = el('div', { class: 'format-grid', attrs: { role: 'radiogroup', 'aria-label': '网表格式' } });
+  const formatNote = el('p', { class: 'format-note', attrs: { 'aria-live': 'polite' } });
 
   const buttons = EXPORTER_LIST.map((exporter) => {
     const input = el('input', {
@@ -77,6 +83,9 @@ export function openExportDialog(config = {}) {
       input,
       el('span', { class: 'format-name', text: exporter.label }),
       el('span', { class: 'format-ext', text: '.' + exporter.extension }),
+      FORMAT_NOTES[exporter.id]
+        ? el('span', { class: 'format-card-note', text: FORMAT_NOTES[exporter.id] })
+        : null,
     ]);
   });
   formatGrid.append(...buttons);
@@ -106,6 +115,9 @@ export function openExportDialog(config = {}) {
     }
     stats.textContent = summaryText();
     fileLabel.textContent = exportFileName(project, sheetName, exporter.extension) + ' · ' + exporter.mime;
+    formatNote.textContent = FORMAT_NOTES[formatId]
+      ? FORMAT_NOTES[formatId] + '：S-表达式网表，UTF-8 无 BOM、CRLF 行尾。'
+      : '';
   }
 
   const copyButton = el('button', {
@@ -146,6 +158,7 @@ export function openExportDialog(config = {}) {
 
   const body = el('div', { class: 'export-dialog' }, [
     formatGrid,
+    formatNote,
     stats,
     preview,
     el('p', { class: 'export-file', attrs: { 'aria-live': 'polite' } }, [fileLabel]),

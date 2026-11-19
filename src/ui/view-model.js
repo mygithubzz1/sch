@@ -189,13 +189,14 @@ export function netlistSummary(result) {
   };
 }
 
-/** 网络列表行：pin 标签用于点击定位。 */
+/** 网络列表行：pin 标签用于点击定位；class 缺省为 KiCad 的 Default。 */
 export function netRows(result) {
   const nets = Array.isArray(result && result.nets) ? result.nets : [];
   return nets.map((net) => {
     const pins = Array.isArray(net && net.pins) ? net.pins : [];
     return {
       name: net && typeof net.name === 'string' && net.name !== '' ? net.name : '未命名网络',
+      class: net && typeof net.class === 'string' && net.class.trim() !== '' ? net.class : 'Default',
       pins: pins.map((pin) => ({
         label: (pin && pin.designator ? pin.designator : '?') + '.' + (pin && pin.pinNumber !== undefined ? pin.pinNumber : '?'),
         pinName: pin && typeof pin.pinName === 'string' ? pin.pinName : '',

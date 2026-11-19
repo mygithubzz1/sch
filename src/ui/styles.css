@@ -1333,6 +1333,17 @@ select.input {
   font-weight: 600;
 }
 
+.net-class {
+  flex: none;
+  padding: 0 5px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 16px;
+}
+
 .net-count {
   margin-left: auto;
   color: var(--muted);
@@ -1605,6 +1616,19 @@ select.input {
   color: var(--muted);
   font-family: var(--mono);
   font-size: 10px;
+}
+
+.format-card-note {
+  color: var(--accent);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.format-note {
+  min-height: 15px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .export-stats {
