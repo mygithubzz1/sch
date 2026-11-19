@@ -268,7 +268,7 @@ console.log('网络数', before.nets.length, after.nets.length, '网络名+引�
 | `NET_CLASS_CONFLICT` / `EMPTY_NET_NAME` / `MISSING_PIN_POINT` | 同名网络对应多个 class / 解码后网络名为空 / 节点找不到引脚位置，相关节点跳过 |
 | `SYMBOL_BUILD_FAILED` | 库符号构建失败，跳过该符号 |
 
-致命错误（不会载入工程，`ok: false` 并在对话框列出）来自解析与结构校验：`MISSING_EXPORT`（不是 S-表达式网表 / 缺少 `export` 根）、`INVALID_TOKEN`、`UNTERMINATED_STRING`、`UNTERMINATED_LIST`、`DEPTH_EXCEEDED`、`TRAILING_TOKEN`、`MISSING_VERSION`、`MISSING_SECTION`、`MISSING_SHEET`、`MISSING_COMP_REF`、`MISSING_PIN_NUM`、`MISSING_PIN_TYPE`、`MISSING_NET_NAME`、`MISSING_LIBPART_KEY`、`MISSING_LIBRARY_LOGICAL`、`MISSING_NODE_KEY`、`MISSING_PROPERTY_NAME`，以及工程校验失败的 `PROJECT_INVALID`。例如把 `examples/demo-led.json` 当网表导入，会得到一条：`第 1 行 [MISSING_EXPORT] 网表必须以 (export …) 列表开头`。
+致命错误（不会载入工程，`ok: false` 并在对话框列出）来自解析与结构校验：`MISSING_EXPORT`（不是 S-表达式网表 / 缺少 `export` 根）、`INVALID_TOKEN`、`UNTERMINATED_STRING`、`UNTERMINATED_LIST`、`DEPTH_EXCEEDED`、`TRAILING_TOKEN`、`MISSING_VERSION`、`MISSING_SECTION`、`MISSING_SHEET`、`MISSING_COMP_REF`、`MISSING_PIN_NUM`、`MISSING_PIN_TYPE`、`MISSING_NET_NAME`、`MISSING_LIBPART_KEY`、`MISSING_LIBRARY_LOGICAL`、`MISSING_NODE_KEY`、`MISSING_PROPERTY_NAME`（对话框里显示为「第 N 行 [错误码] 说明」）。如果网表本身合法但重建出的工程通不过 schema 校验，则 `errors` 是具体的字段校验信息，`diagnostics` 里统一标为 `PROJECT_INVALID`。例如把 `examples/demo-led.json` 当网表导入，会得到一条：`第 1 行 [MISSING_EXPORT] 网表必须以 (export …) 列表开头`。
 
 ## 9. 保存、打开与恢复
 
