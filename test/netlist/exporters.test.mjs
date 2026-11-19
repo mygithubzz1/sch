@@ -127,28 +127,35 @@ test('CSV 对逗号/引号/换行字段加引号转义，未连接引脚留空�
   assert.ok(csv.includes('R1,1,~,N$1'));
 });
 
-test('KiCad 网表为 KiCad 6+ S-表达式，括号平衡、net code 连续', () => {
+test('KiCad 网表为 KiCad 9 分节 S-表达式：括号平衡、net code 连续、CRLF 且末尾无换行', () => {
   const text = generateKiCad(dividerProject());
 
   assert.ok(text.startsWith('(export (version "E")'));
   assert.ok(text.includes('(design'));
   assert.ok(text.includes('(components'));
-  assert.ok(text.includes('(comp (ref "R1") (value "10k") (footprint "R_0805")'));
+  assert.ok(text.includes('(libparts'));
+  assert.ok(text.includes('(libraries'));
+  assert.ok(text.includes('(comp (ref "R1")'));
+  assert.ok(text.includes('(value "10k")') && text.includes('(footprint "R_0805")'));
   assert.ok(text.includes('(nets'));
-  assert.ok(text.includes('(net (code 1) (name "GND")'));
-  assert.ok(text.includes('(node (ref "R2") (pin "2") (pinfunction "~") (pintype "passive"))'));
+  assert.ok(text.includes('(net (code "1") (name "GND") (class "Default")'));
+  // KiCad 9：空 pinfunction 整段省略；"~" 不再是空值写法。
+  assert.ok(text.includes('(node (ref "R2") (pin "2") (pintype "passive"))'));
   assert.ok(text.includes('(pintype "power_in")'));
+  assert.equal(text.includes('(pinfunction "~")'), false);
   assert.equal(text.trim().endsWith(')'), true);
+  assert.equal(text.endsWith('\n'), false, 'KiCad 9 文件末尾不得有换行');
+  assert.equal(/(?<!\r)\n/.test(text), false, '所有行必须以 CRLF 结尾');
 
   const balance = parenBalance(text);
   assert.equal(balance.depth, 0, '括号必须平衡');
   assert.equal(balance.minimum, 0, '不能出现多余的右括号');
 
-  const codes = [...text.matchAll(/\(net \(code (\d+)\)/g)].map((match) => Number(match[1]));
+  const codes = [...text.matchAll(/\(net \(code "(\d+)"\)/g)].map((match) => Number(match[1]));
   assert.deepEqual(codes, [1, 2, 3]);
 });
 
-test('KiCad 网表把空引脚名写成 "~"（与 KiCad 原生网表一致）', () => {
+test('KiCad 网表把空引脚名整段省略（KiCad 9 不写 pinfunction "~" / ""）', () => {
   const project = createProject('空引脚名');
   const sheet = project.sheets[0];
   sheet.symbols.push(
@@ -167,8 +174,10 @@ test('KiCad 网表把空引脚名写成 "~"（与 KiCad 原生网表一致）', 
   ];
 
   const text = generateKiCad(project);
-  assert.ok(text.includes('(pinfunction "~")'));
-  assert.equal(text.includes('(pinfunction "")'), false);
+  assert.equal(text.includes('(pinfunction "~")'), false, '空引脚名不得写成 "~"');
+  assert.equal(text.includes('(pinfunction "")'), false, '空引脚名不得写成空串');
+  // 引脚名全空 ⇒ 网表里不出现任何 pinfunction 子节点。
+  assert.equal(text.includes('(pinfunction '), false);
   assert.equal(parenBalance(text).depth, 0);
 });
 
