@@ -170,10 +170,110 @@ test('枚举常量覆盖契约取值', () => {
     'input',
     'output',
     'bidirectional',
+    'tri_state',
     'passive',
+    'free',
+    'unspecified',
     'power_in',
     'power_out',
     'open_collector',
-    'not_connected',
+    'open_emitter',
+    'no_connect',
   ]);
+});
+
+test('KiCad 12 值电气类型全部被 normalizePin 保留，旧值 not_connected 迁移', () => {
+  for (const electricalType of PIN_ELECTRICAL_TYPES) {
+    const pin = normalizePin({ number: '1', electricalType });
+    assert.equal(pin.electricalType, electricalType);
+    assert.equal(pin.noConnect, false);
+    assert.equal(pin.free, false);
+  }
+
+  const legacy = normalizePin({ number: '1', electricalType: 'not_connected' });
+  assert.equal(legacy.electricalType, 'no_connect');
+  assert.equal(legacy.noConnect, true);
+
+  const modified = normalizePin({ number: '2', electricalType: 'bidirectional', noConnect: true, free: true });
+  assert.equal(modified.electricalType, 'bidirectional');
+  assert.equal(modified.noConnect, true);
+  assert.equal(modified.free, true);
+
+  assert.equal(normalizePin({ number: '3', electricalType: 'bogus' }).electricalType, 'passive');
+});
+
+test('validateSymbolDef 接受 KiCad 新类型与 noConnect/free，拒绝非法修饰类型', () => {
+  const base = () => normalizeSymbolDef(customSymbol());
+  const accepted = base();
+  accepted.pins[0].electricalType = 'tri_state';
+  accepted.pins[0].noConnect = true;
+  accepted.pins[0].free = true;
+  assert.equal(validateSymbolDef(accepted).ok, true);
+
+  const legacy = base();
+  legacy.pins[0].electricalType = 'not_connected';
+  assert.equal(validateSymbolDef(legacy).ok, true);
+
+  const badType = base();
+  badType.pins[0].electricalType = 'not_a_type';
+  assert.equal(validateSymbolDef(badType).ok, false);
+  assert.ok(validateSymbolDef(badType).errors.some((message) => message.includes('electricalType')));
+
+  const badFlag = base();
+  badFlag.pins[0].noConnect = 'yes';
+  assert.equal(validateSymbolDef(badFlag).ok, false);
+  assert.ok(validateSymbolDef(badFlag).errors.some((message) => message.includes('noConnect')));
+});
+
+test('normalizeSymbolDef 支持 docs/footprints/keywords/fpFilters/fields 元数据', () => {
+  const symbol = normalizeSymbolDef({
+    id: 'R_Small',
+    name: 'R_Small',
+    refPrefix: 'R',
+    description: 'Resistor, small symbol',
+    docs: '~',
+    footprints: ['R_*', 'R_*'],
+    keywords: 'R res resistor',
+    fpFilters: ['R_*'],
+    fields: [
+      { name: 'Reference', value: 'R' },
+      { name: 'Value', value: 'R_Small' },
+      { name: 'Footprint' },
+      { name: 'Datasheet', value: '~' },
+      { name: 'Description', value: 'Resistor, small symbol' },
+    ],
+    pins: [],
+    graphics: [],
+  });
+  assert.equal(symbol.docs, '~');
+  assert.deepEqual(symbol.footprints, ['R_*', 'R_*']);
+  assert.equal(symbol.keywords, 'R res resistor');
+  assert.deepEqual(symbol.fpFilters, ['R_*']);
+  assert.deepEqual(symbol.fields[2], { name: 'Footprint' });
+  assert.equal(symbol.fields[3].value, '~');
+
+  const defaults = normalizeSymbolDef({
+    id: 'Y',
+    name: '元件 Y',
+    refPrefix: 'Y',
+    description: '测试元件',
+    pins: [],
+    graphics: [],
+  });
+  assert.equal(defaults.docs, '');
+  assert.deepEqual(defaults.footprints, []);
+  assert.equal(defaults.keywords, '');
+  assert.deepEqual(defaults.fpFilters, []);
+  assert.deepEqual(defaults.fields.map((field) => field.name), [
+    'Reference',
+    'Value',
+    'Footprint',
+    'Datasheet',
+    'Description',
+  ]);
+  assert.equal(defaults.fields[0].value, 'Y');
+  assert.equal(defaults.fields[1].value, '元件 Y');
+  assert.equal(defaults.fields[2].value, undefined);
+  assert.equal(defaults.fields[3].value, '~');
+  assert.equal(defaults.fields[4].value, '测试元件');
 });

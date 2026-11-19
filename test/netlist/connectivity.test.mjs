@@ -20,6 +20,7 @@ import {
   powerNameProject,
   ercProject,
   emptyProject,
+  richAttributesProject,
   symbolDefs,
 } from './fixtures.mjs';
 
@@ -70,7 +71,24 @@ test('分压网络：成员引脚带 sheetId / symbolId / instanceId 等契约�
   assert.equal(pin.sheetId, project.sheets[0].id);
   assert.equal(typeof pin.instanceId, 'string');
   assert.ok(pin.instanceId.length > 0);
-  assert.deepEqual(Object.keys(pin), ['designator', 'pinNumber', 'pinName', 'symbolId', 'instanceId', 'sheetId']);
+  assert.deepEqual(Object.keys(pin), [
+    'designator',
+    'pinNumber',
+    'pinName',
+    'symbolId',
+    'instanceId',
+    'sheetId',
+    'pinfunction',
+    'electricalType',
+    'pintype',
+    'noConnect',
+    'free',
+  ]);
+  assert.equal(pin.pinfunction, '~');
+  assert.equal(pin.electricalType, 'passive');
+  assert.equal(pin.pintype, 'passive');
+  assert.equal(pin.noConnect, false);
+  assert.equal(pin.free, false);
 });
 
 test('LED 指示电路：VCC 网络含两个电源符号与限流电阻，中间网络自动命名 N$1', () => {
@@ -217,8 +235,135 @@ test('空工程与 netToContract、naturalCompare 边界', () => {
   const project = emptyProject();
   assert.deepEqual(buildConnectivity(project, project.sheets[0]).nets, []);
   assert.deepEqual(buildProjectConnectivity(project).nets, []);
-  assert.deepEqual(netToContract({ name: 'X', pins: [] }), { name: 'X', pins: [] });
+  assert.deepEqual(netToContract({ name: 'X', pins: [] }), { name: 'X', class: 'Default', pins: [] });
   assert.ok(naturalCompare('R2', 'R10') < 0);
   assert.ok(naturalCompare('R10', 'R2') > 0);
   assert.equal(naturalCompare('R1', 'R1'), 0);
+});
+
+test('net class 来自 project.netClassAssignments，缺省 Default，并透传到 netToContract', () => {
+  const project = dividerProject();
+  project.netClassAssignments = { MID: 'ioout', GND: 'pwr', '不存在的网络': 'pwr' };
+
+  const contract = buildConnectivity(project, project.sheets[0]);
+  assert.deepEqual(
+    contract.nets.map((net) => [net.name, net.class]),
+    [
+      ['GND', 'pwr'],
+      ['MID', 'ioout'],
+      ['VCC', 'Default'],
+    ],
+  );
+
+  const detail = analyzeSheet(project, project.sheets[0], { symbols: symbolDefs() });
+  assert.deepEqual(
+    detail.nets.map((net) => net.class),
+    ['pwr', 'ioout', 'Default'],
+  );
+  assert.equal(detail.nets.find((net) => net.name === 'MID').nameSource, 'local');
+
+  const projectWide = analyzeProject(project);
+  assert.deepEqual(
+    projectWide.nets.map((net) => [net.name, net.class, net.nameSource]),
+    [
+      ['GND', 'pwr', 'power'],
+      ['MID', 'ioout', 'local'],
+      ['VCC', 'Default', 'power'],
+    ],
+  );
+
+  // 无映射时全部 Default；netToContract 不修改明细网络。
+  const plain = analyzeProject(dividerProject());
+  assert.ok(plain.nets.every((net) => net.class === 'Default'));
+  const someNet = detail.nets[0];
+  const converted = netToContract(someNet);
+  assert.equal(converted.class, someNet.class);
+  assert.equal(someNet.class, 'pwr');
+});
+
+test('富属性工程：component.kicad 透传、pinfunction 原文、pintype 与 noConnect/free 修饰', () => {
+  const project = richAttributesProject();
+  const sub = project.sheets[1];
+  const analysis = analyzeProject(project);
+
+  const component = analysis.components.find((item) => item.designator === 'U1');
+  assert.ok(component);
+  assert.deepEqual(component.kicad, sub.symbols[0].kicad);
+  assert.equal(component.kicad.libsource.part, 'RICH');
+  assert.deepEqual(component.kicad.properties[0], { name: 'Sheetname', value: 'RP2040' });
+  assert.equal(component.kicad.fields[0].value, 'Package_SO:SOT-23');
+
+  // no_connect 基础类型不进网络（既有规则），但仍保留在 component.pins 供导出器合成 unconnected 网络。
+  assert.deepEqual(
+    component.pins.map((pin) => [pin.number, pin.electricalType, pin.noConnect, pin.free]),
+    [
+      ['1', 'bidirectional', true, false],
+      ['2', 'input', false, true],
+      ['3', 'no_connect', false, false],
+    ],
+  );
+  assert.equal(
+    analysis.nets.some((net) => net.pins.some((pin) => pin.designator === 'U1' && pin.pinNumber === '3')),
+    false,
+  );
+
+  const sbu1 = analysis.nets.find((net) => net.name === 'SBU1');
+  assert.equal(sbu1.class, 'iobidir');
+  assert.deepEqual(sbu1.sheetIds, [sub.id]);
+  const sbuPin = netToContract(sbu1).pins.find((pin) => pin.designator === 'U1');
+  assert.equal(sbuPin.pinfunction, 'SBU1');
+  assert.equal(sbuPin.electricalType, 'bidirectional');
+  assert.equal(sbuPin.pintype, 'bidirectional');
+  assert.equal(sbuPin.noConnect, true);
+  assert.equal(sbuPin.free, false);
+
+  // 网络名与 pinfunction 都保留可读的裸 "/"；connectivity 不做 {slash} 编解码。
+  const mio = analysis.nets.find((net) => net.name === 'mio[36]/ctrl');
+  assert.equal(mio.class, 'config');
+  assert.equal(mio.nameSource, 'local');
+  const mioPin = netToContract(mio).pins.find((pin) => pin.designator === 'U1');
+  assert.equal(mioPin.pinfunction, 'mio[36]/ctrl');
+  assert.equal(mioPin.free, true);
+  assert.equal(mioPin.noConnect, false);
+
+  // 根图纸网络保持默认 class 映射。
+  assert.equal(analysis.nets.find((net) => net.name === 'MID').class, 'ioout');
+  assert.equal(analysis.nets.find((net) => net.name === 'VCC').class, 'pwr');
+
+  const sheetOnly = buildConnectivity(project, sub);
+  assert.deepEqual(
+    sheetOnly.nets.map((net) => [net.name, net.class]),
+    [
+      ['SBU1', 'iobidir'],
+      ['mio[36]/ctrl', 'config'],
+    ],
+  );
+});
+
+test('旧词汇 not_connected 在连通性中按 no_connect 处理且保留 component.pins', () => {
+  const project = createProject('旧词汇');
+  const sheet = project.sheets[0];
+  sheet.symbols.push(createSymbolInstance({ symbolId: 'LEGACY', designator: 'U1', x: 0, y: 0 }));
+  project.library.symbols = [
+    {
+      id: 'LEGACY',
+      power: false,
+      pins: [
+        { id: 'L.1', number: '1', name: 'A', x: 0, y: -2.54, length: 2.54, orientation: 'down', electricalType: 'not_connected' },
+        { id: 'L.2', number: '2', name: 'B', x: 0, y: 2.54, length: 2.54, orientation: 'up', electricalType: 'passive' },
+      ],
+    },
+  ];
+  const analysis = analyzeSheet(project, sheet);
+  assert.deepEqual(
+    analysis.components[0].pins.map((pin) => [pin.electricalType, pin.noConnect]),
+    [
+      ['no_connect', true],
+      ['passive', false],
+    ],
+  );
+  assert.deepEqual(
+    analysis.nets.map((net) => net.pins.map((pin) => pin.pinNumber)),
+    [['2']],
+  );
 });
