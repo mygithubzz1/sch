@@ -33,7 +33,7 @@ node server.mjs      # 或 npm start
 
 1. 启动后选「文件 → 导入 KiCad 网表…」，选择 `examples/tinytapeout-demo.net`；提示「已导入 KiCad 网表：元件 150 · 网络 114 · 图纸 2」，标签页出现 `Root` 与 `RP2040` 两张图纸。
 2. 点底部「生成网表」查看网络与 net class（统计为 网络 113 · 引脚 583 · 元件 150 · 警告 5；网络行右侧显示 `Default` / `pwr` / `clk` 等 9 类徽标）。
-3. `Ctrl+E` → 选「KiCad 9 (version E)」→「下载文件」，再与源文件对比：114 个网络名、584 个引脚节点与 net class 完全一致，再导出的文件与 KiCad 原文件逐字节相同（254285 字节、SHA-256 `2f92e581…a53f`；命令与实测输出见 [docs/USAGE.md 第 8.3 节](docs/USAGE.md#83-完整走查导入-tinytapeout-demonet-并对比导出结果)）。
+3. `Ctrl+E` → 选「KiCad 9 网表」（格式卡片会提示「KiCad 9 (version E)」）→「下载文件」，再与源文件对比：114 个网络名、584 个引脚节点与 net class 完全一致，再导出的文件与 KiCad 原文件逐字节相同（254285 字节、SHA-256 `2f92e581…a53f`；命令与实测输出见 [docs/USAGE.md 第 8.3 节](docs/USAGE.md#83-完整走查导入-tinytapeout-demonet-并对比导出结果)）。
 
 ## 功能矩阵
 
