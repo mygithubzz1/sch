@@ -1,3 +1,6 @@
 # 统一换行为 LF，消除 Windows 下的 CRLF 噪声
 * text=auto eol=lf
 *.json text eol=lf
+# KiCad 网表黄金样本按原始字节保存：KiCad 在 Windows 上导出 CRLF 且字符串内含 \n 转义字面量，
+# 换行规范化会破坏 fixtures 与 examples/tinytapeout-demo.net 的字节可复现性。
+*.net -text
