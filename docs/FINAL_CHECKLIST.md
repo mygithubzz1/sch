@@ -245,7 +245,7 @@ main (6e1208f)
 | `docs/dev-docs` | T7 | 5 | `7a444d6` | worktree 已移除 |
 | `docs/usage` | T8 | 7 | `d3ac123` | worktree 已移除 |
 
-`dev` 相对 main：四个分支合并完成时（`d3ac123`）为 **36 个提交**（23 个普通提交 + 13 个合并提交），其后另加本附录的 2 个 docs 收尾提交；完整计数以 `git rev-list --count main..dev` 实测为准（落盘时为 **38**）。13 个合并提交 = 9 个 integrator 集成合并（T1–T5 五个、T10/T11 两个、T7/T8 两个）+ 4 个成员分支自身的依赖基线合并（`2d120a8`/`dfbcc0c`/`3c12763`/`b639a7b`）。全部合并均为 `--no-ff`，ort 策略干净完成、**0 冲突**。
+`dev` 相对 main：四个分支合并完成时（`d3ac123`）为 **36 个提交**（23 个普通提交 + 13 个合并提交）；其后是附录相关的 docs 收尾提交（本附录 + 2 处数字校准），总数以 `git rev-list --count main..dev` 实测为准。13 个合并提交 = 9 个 integrator 集成合并（T1–T5 五个、T10/T11 两个、T7/T8 两个）+ 4 个成员分支自身的依赖基线合并（`2d120a8`/`dfbcc0c`/`3c12763`/`b639a7b`）。全部合并均为 `--no-ff`，ort 策略干净完成、**0 冲突**。
 
 ## A.2 任务矩阵与验收结论
 
@@ -258,7 +258,7 @@ main (6e1208f)
 | T5 UI | 菜单「导入 KiCad 网表…」、独立 `netlistFileInput`、net class 徽标、导出对话框 KiCad 9 说明 | 通过（UI 40/40，全量 488/488） |
 | T6 第一波集成 | 5 分支合并 + `test/integration/kicad-roundtrip.test.mjs`（8 用例） | 通过（496/496）；记录 2 处非阻断缺口，其一由 T11 关闭 |
 | T7 开发文档 | `docs/NETLIST_KICAD.md`（432 行）、`docs/DEVELOPMENT.md`（200 行）、ARCHITECTURE/CONTRACTS/SPEC 更新 | 通过；仅改文档 |
-| T8 使用文档 | `docs/USAGE.md`（+186）、`README.md`（+43/−…） | 通过；仅改文档 |
+| T8 使用文档 | `docs/USAGE.md`（+176/−10）、`README.md`（+28/−15） | 通过；仅改文档 |
 | T9 第二波集成与终验 | 4 分支合并 + 本附录 + 文档一致性抽检 + 3× 全量验证 | 通过（本附录即验收记录） |
 | T10 flake 修复 | `startServer({ quiet, logger })`、scaffold 静默、`test/integration/harness-probe.test.mjs`（4 断言） | 通过；3 次全量 0 次 `Unable to deserialize cloned data`（见 A.6） |
 | T11 多值 tstamps | reader/model/schema/exporter/importer 支持 `string \| string[]`、导出按原序输出 | 通过；黄金样本导入→导出**逐字节相同**（见 A.7） |
