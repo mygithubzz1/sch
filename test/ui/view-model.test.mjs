@@ -131,6 +131,7 @@ test('网表摘要/网络行/告警行可驱动面板渲染', () => {
     nets: [
       {
         name: 'VCC',
+        class: 'Power',
         pins: [
           { designator: 'R1', pinNumber: '1', pinName: 'A', instanceId: 'sym-1', sheetId: 'sheet-1' },
           { designator: 'C1', pinNumber: '2', pinName: 'B', instanceId: 'sym-2', sheetId: 'sheet-1' },
@@ -153,9 +154,11 @@ test('网表摘要/网络行/告警行可驱动面板渲染', () => {
 
   const rows = netRows(result);
   assert.equal(rows[0].name, 'VCC');
+  assert.equal(rows[0].class, 'Power');
   assert.equal(rows[0].pins[0].label, 'R1.1');
   assert.equal(rows[0].pins[0].instanceId, 'sym-1');
   assert.equal(rows[1].name, '未命名网络');
+  assert.equal(rows[1].class, 'Default');
 
   const warnings = warningRows(result.warnings);
   assert.equal(warnings[0].label, '悬空引脚');

@@ -12,6 +12,7 @@ import {
 import { exportSheetPNG } from '../io/png-export.js';
 import { projectToSVG } from '../io/svg-export.js';
 import { buildNetlist } from '../netlist/index.js';
+import { importKiCadNetlist } from '../netlist/kicad-import.js';
 import { DEFAULT_THEME } from '../render/theme.js';
 import { openExportDialog } from './dialogs/export-dialog.js';
 import { confirmDialog, promptDialog } from './dialogs/modal.js';
@@ -31,6 +32,12 @@ const DRAFT_KEY = 'draft';
 
 function svgFileName(project, sheet) {
   return exportFileName(project, sheet ? sheetLabel(sheet) : '', 'svg');
+}
+
+/** 统计值归一化（导入器缺失字段或非法值时按 0 显示）。 */
+function countOf(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? Math.trunc(number) : 0;
 }
 
 /**
@@ -136,6 +143,70 @@ export function createFileActions(ctx) {
       await loadProject(project, '已打开工程：' + file.name);
     } catch (error) {
       ctx.handleError(error, '打开工程');
+    }
+  }
+
+  /** 打开 KiCad 网表文件选择器（独立 input，不复用工程文件 input）。 */
+  function openNetlistImport() {
+    try {
+      ctx.layout.netlistFileInput.click();
+    } catch (error) {
+      ctx.handleError(error, '打开网表文件选择器');
+    }
+  }
+
+  /**
+   * 读取并导入 KiCad 网表：先解析成功再退出封装模式并确认丢弃未保存修改，
+   * 失败时只弹错误对话框，不触碰当前工程与选区。
+   */
+  async function handleNetlistFileChange() {
+    const input = ctx.layout.netlistFileInput;
+    const file = input && input.files && input.files[0];
+    if (input) input.value = '';
+    if (!file) return;
+
+    let result = null;
+    try {
+      const text = await readFileText(file);
+      result = importKiCadNetlist(text);
+    } catch (error) {
+      ctx.showMessageDialog('无法导入 KiCad 网表', ['读取或解析网表失败：' + messageOf(error)]);
+      return;
+    }
+    if (!result || result.ok !== true || !result.project) {
+      const errors = result && Array.isArray(result.errors) ? result.errors : [];
+      ctx.showMessageDialog(
+        '无法导入 KiCad 网表',
+        errors.length > 0 ? errors : ['网表解析失败：未找到可导入的 export 段。'],
+      );
+      return;
+    }
+
+    if (ctx.mode === 'footprint') {
+      const exited = await ctx.exitFootprintMode();
+      if (!exited) return;
+    }
+    if (ctx.dirty) {
+      const discard = await confirmDialog({
+        root: ctx.layout.modalRoot,
+        title: '导入 KiCad 网表',
+        message: '当前工程有未保存的修改，导入网表将丢弃这些修改。',
+        confirmLabel: '导入网表',
+        danger: true,
+      });
+      if (!discard) return;
+    }
+
+    const stats = result.stats || {};
+    const message = '已导入 KiCad 网表：元件 ' + countOf(stats.components) +
+      ' · 网络 ' + countOf(stats.nets) + ' · 图纸 ' + countOf(stats.sheets);
+    try {
+      const loaded = await loadProject(result.project, message);
+      if (loaded && Array.isArray(result.warnings) && result.warnings.length > 0) {
+        ctx.showToast('导入完成，另有 ' + result.warnings.length + ' 条提示', 'warn');
+      }
+    } catch (error) {
+      ctx.handleError(error, '导入 KiCad 网表');
     }
   }
 
@@ -348,6 +419,8 @@ export function createFileActions(ctx) {
     newProject,
     openProject,
     handleFileInputChange,
+    openNetlistImport,
+    handleNetlistFileChange,
     openExample,
     saveProject,
     saveProjectAs,

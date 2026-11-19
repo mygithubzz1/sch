@@ -53,7 +53,17 @@ export function buildLayout(root) {
       tabindex: '-1',
     },
   });
-  root.append(shell, modalRoot, toastRoot, fileInput);
+  // KiCad 网表导入使用独立 input，避免与「打开工程」共用 accept/change 语义。
+  const netlistFileInput = el('input', {
+    class: 'file-input',
+    attrs: {
+      type: 'file',
+      accept: '.net,text/plain',
+      'aria-hidden': 'true',
+      tabindex: '-1',
+    },
+  });
+  root.append(shell, modalRoot, toastRoot, fileInput, netlistFileInput);
   return {
     root,
     shell,
@@ -72,6 +82,7 @@ export function buildLayout(root) {
     modalRoot,
     toastRoot,
     fileInput,
+    netlistFileInput,
   };
 }
 

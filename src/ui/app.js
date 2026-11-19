@@ -202,6 +202,7 @@ export async function startApp(rootEl, options = {}) {
   ctx.bindPointerStatus(ctx.layout.schematicCanvas);
   ctx.bindPointerStatus(ctx.layout.footprintCanvas);
   ctx.layout.fileInput.addEventListener('change', () => { void ctx.handleFileInputChange(); });
+  ctx.layout.netlistFileInput.addEventListener('change', () => { void ctx.handleNetlistFileChange(); });
 
   ctx.store.on('changed', () => {
     ctx.dirty = true;
@@ -358,6 +359,8 @@ export async function startApp(rootEl, options = {}) {
     refresh: ctx.refreshEverything,
     newProject: ctx.newProject,
     openProject: ctx.openProject,
+    openNetlistImport: ctx.openNetlistImport,
+    handleNetlistFileChange: ctx.handleNetlistFileChange,
     saveProject: ctx.saveProject,
     saveProjectAs: ctx.saveProjectAs,
     generateNetlist: ctx.generateNetlist,

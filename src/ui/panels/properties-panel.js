@@ -26,6 +26,19 @@ function numberText(value) {
   return String(Number(number.toFixed(4)));
 }
 
+/**
+ * 图纸备注的双形态显示（KiCad 导入可能是 string[9]，手输是 string）。
+ * 数组按行连接，避免 textarea 出现 "a,b,c" 或 "[object Object]"；提交时统一写回字符串。
+ * @param {string|string[]|undefined|null} comments
+ * @returns {string}
+ */
+export function commentsTextOf(comments) {
+  if (Array.isArray(comments)) {
+    return comments.map((item) => (item === undefined || item === null ? '' : String(item))).join('\n');
+  }
+  return typeof comments === 'string' ? comments : '';
+}
+
 function optionsFrom(values, labelOf = (value) => String(value)) {
   return values.map((value) => ({ value: String(value), label: labelOf(value) }));
 }
@@ -626,8 +639,9 @@ export function createPropertiesPanel(config = {}) {
         }),
       ]),
       textAreaField('备注', {
-        read: () => readSheet().title && readSheet().title.comments,
+        read: () => commentsTextOf(readSheet().title && readSheet().title.comments),
         commit: (value) => updateSheet('修改备注', (draft) => {
+          // 导入工程的 comments 可能是 string[]；编辑后按单字符串写回（模型/导出器都接受双形态）。
           draft.title.comments = value;
         }),
       }),

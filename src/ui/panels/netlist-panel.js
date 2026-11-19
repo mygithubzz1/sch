@@ -165,6 +165,11 @@ export function createNetlistPanel(config = {}) {
         el('div', { class: 'net-head' }, [
           el('span', { class: 'net-dot' }),
           el('span', { class: 'net-name', text: net.name }),
+          el('span', {
+            class: 'net-class',
+            attrs: { title: 'net class：' + net.class },
+            text: net.class,
+          }),
           el('span', { class: 'net-count', text: net.pins.length + ' 引脚' }),
         ]),
         pins,
