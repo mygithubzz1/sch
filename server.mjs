@@ -217,22 +217,42 @@ export function resolvePort(value) {
 }
 
 /**
+ * 解析启动日志接收器：
+ * - `quiet: true` → 完全静默（返回 null），供测试进程调用，避免污染 node:test 结果帧通道；
+ * - `logger` 为函数或带 `log(message)` 的对象 → 重定向（可指向 stderr 或收集器）；
+ * - 缺省 → 仍然使用 `console.log`，保持 npm start / node server.mjs 的终端输出不变。
+ * @param {object} [options] startServer 选项
+ * @returns {((message: string) => void) | null} 日志函数或 null
+ */
+function resolveStartupLogger(options = {}) {
+  if (options.quiet === true) return null;
+  const logger = options.logger;
+  if (typeof logger === 'function') return (message) => logger(message);
+  if (logger && typeof logger.log === 'function') return (message) => logger.log(message);
+  return (message) => console.log(message);
+}
+
+/**
  * 启动服务器并打印访问地址。
- * @param {{ port?: number, rootDir?: string, host?: string }} [options] 启动参数
+ * 默认行为保持不变；测试可传 `{ quiet: true }` 静默，或用 `{ logger }` 重定向启动日志。
+ * @param {{ port?: number, rootDir?: string, host?: string, quiet?: boolean,
+ *   logger?: ((message: string) => void) | { log: (message: string) => void } }} [options] 启动参数
  * @returns {import('node:http').Server} 已开始监听的服务器
  */
 export function startServer(options = {}) {
   const port = resolvePort(options.port ?? process.env.PORT);
   const rootDir = options.rootDir ?? DEFAULT_ROOT;
   const host = resolveHost(options);
+  const log = resolveStartupLogger(options);
   const server = createServer(rootDir);
   server.listen(port, host, () => {
     const address = server.address();
     const actualPort = typeof address === 'object' && address ? address.port : port;
     const displayHost = host === '0.0.0.0' || host === '::' ? 'localhost' : host;
-    console.log(`原理图工作室 dev server 已启动: http://${displayHost}:${actualPort}`);
-    console.log(`静态根目录: ${path.resolve(rootDir)}`);
-    if (host !== DEFAULT_HOST) console.log('警告: 已监听非回环地址，局域网内可访问。');
+    if (!log) return;
+    log(`原理图工作室 dev server 已启动: http://${displayHost}:${actualPort}`);
+    log(`静态根目录: ${path.resolve(rootDir)}`);
+    if (host !== DEFAULT_HOST) log('警告: 已监听非回环地址，局域网内可访问。');
   });
   return server;
 }
